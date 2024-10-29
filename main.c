@@ -26,36 +26,23 @@ typedef struct {
 
     uint32_t *screen;
 } game_t;
-// Function to detect key press without blocking
-uint8_t keyboard_hit(void) {
-    struct termios oldt, newt;
 
+// Input thread to capture key presses
+void* input_thread(void* _) {
+    struct termios oldt, newt;
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
     newt.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode and echo
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    const uint32_t oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-    const int32_t ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    if (ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-    return 0;
-}
-
-// Input thread to capture key presses
-void* input_thread(void* _) {
     while (running) {
-        if (!keyboard_hit()) continue;
+        const int32_t ch = getchar();
+        if (ch == EOF) continue;
         pthread_mutex_lock(&key_mutex);
-        last_key = (char) getchar();
+        last_key = ch;
         pthread_mutex_unlock(&key_mutex);
     }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     return NULL;
 }
 
@@ -83,51 +70,51 @@ void* input_thread(void* _) {
 
 
 
-uint32_t idle[6][4] = {
-    0x00000000, 0x07060406, 0x60202030, 0x00000000,
-    0x00000000, 0x7f3f1f0f, 0xf8f8f0e0, 0x00000000,
-    0x00000000, 0xc3e7ffff, 0xfffdfcfc, 0x00000000,
-    0x00000000, 0x00008080, 0x3e3f7cfc, 0x00c00000,
-    0x00000000, 0x00000000, 0x373f3f3f, 0xf0f0f0f0,
-    0x00000000, 0x00000000, 0x0000001f, 0x000000e0,
+uint32_t idle[24] = {
+    0x00000000, 0x0000b84b, 0x08c70000, 0x00000000,
+    0x00000000, 0x083bffff, 0xff7f0300, 0x00000000,
+    0x00000000, 0xffe6f4ff, 0xffffff19, 0x00000000,
+    0x00000000, 0x44000000, 0xe0ffff13, 0x12000000,
+    0x00000000, 0x00000000, 0x00fffeff, 0xffff0000,
+    0x00000000, 0x00000000, 0x0080c0c0, 0xc0400000,
 };
-uint32_t run_1[6][4] = {
-    0x00000000, 0x07060406, 0x60380000, 0x00000000,
-    0x00000000, 0x7f3f1f0f, 0xf8f8f0e0, 0x00000000,
-    0x00000000, 0xc3e7ffff, 0xfffdfcfc, 0x00000000,
-    0x00000000, 0x00008080, 0x3e3f7cfc, 0x00c00000,
-    0x00000000, 0x00000000, 0x373f3f3f, 0xf0f0f0f0,
-    0x00000000, 0x00000000, 0x0000001f, 0x000000e0,
+uint32_t run_1[24] = {
+    0x00000000, 0x0000b84b, 0x08130200, 0x00000000,
+    0x00000000, 0x083bffff, 0xff7f0300, 0x00000000,
+    0x00000000, 0xffe6f4ff, 0xffffff19, 0x00000000,
+    0x00000000, 0x44000000, 0xe0ffff13, 0x12000000,
+    0x00000000, 0x00000000, 0x00fffeff, 0xffff0000,
+    0x00000000, 0x00000000, 0x0080c0c0, 0xc0400000,
 };
-uint32_t run_2[6][4] = {
-    0x00000000, 0x07060300, 0x60202030, 0x00000000,
-    0x00000000, 0x7f3f1f0f, 0xf8f8f0e0, 0x00000000,
-    0x00000000, 0xc3e7ffff, 0xfffdfcfc, 0x00000000,
-    0x00000000, 0x00008080, 0x3e3f7cfc, 0x00c00000,
-    0x00000000, 0x00000000, 0x373f3f3f, 0xf0f0f0f0,
-    0x00000000, 0x00000000, 0x0000001f, 0x000000e0,
+uint32_t run_2[24] = {
+    0x00000000, 0x0000182f, 0x08c70000, 0x00000000,
+    0x00000000, 0x083bffff, 0xff7f0300, 0x00000000,
+    0x00000000, 0xffe6f4ff, 0xffffff19, 0x00000000,
+    0x00000000, 0x44000000, 0xe0ffff13, 0x12000000,
+    0x00000000, 0x00000000, 0x00fffeff, 0xffff0000,
+    0x00000000, 0x00000000, 0x0080c0c0, 0xc0400000,
 };
-uint32_t death[6][4] = {
-    0x00000000, 0x07060406, 0x60202030, 0x00000000,
-    0x00000000, 0x7f3f1f0f, 0xf8f8f0e0, 0x00000000,
-    0x00000000, 0xc3e7ffff, 0xfffdfcfc, 0x00000000,
-    0x00000000, 0x00008080, 0x3f3f7cfc, 0xf0c00000,
-    0x00000000, 0x00000000, 0x3135313f, 0xf0f0f0f0,
-    0x00000000, 0x00000000, 0x0000001f, 0x000000e0,
+uint32_t death[24] = {
+    0x00000000, 0x0000b84b, 0x08c70000, 0x00000000,
+    0x00000000, 0x083bffff, 0xff7f0300, 0x00000000,
+    0x00000000, 0xffe6f4ff, 0xffffff19, 0x00000000,
+    0x00000000, 0x44000000, 0xe0ffff1b, 0x1b090000,
+    0x00000000, 0x00000000, 0x00ffd0f8, 0xffff0000,
+    0x00000000, 0x00000000, 0x0080c0c0, 0xc0400000,
 };
-uint32_t down_1[6][4] = {
-    0x04070000, 0x71614060, 0x00800000, 0x00000000,
-    0x1f0f0707, 0xffffffff, 0xfffe9f80, 0xf000c000,
-    0xe1ff7f3f, 0xffffffff, 0x1ff7ffff, 0xe0f0f0f0,
-    0x00000080, 0x00000000, 0x00000000, 0x00000000,
+uint32_t down_1[24] = {
+    0x00001812, 0xb84b0018, 0x02000000, 0x00000000,
+    0x0008bbff, 0xffffffff, 0x5f3b3f2f, 0x2d090000,
+    0x3bf7f6fe, 0xffffffff, 0xf6fefdff, 0xfff70000,
+    0x40000000, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
-    };
-uint32_t down_2[6][4] = {
-    0x07060406, 0x21390000, 0x00800000, 0x00000000,
-    0x1f0f0703, 0xffffffff, 0xfffe9f80, 0xf000c000,
-    0xe1ff7f3f, 0xffffffff, 0x1ff7ffff, 0xe0f0f0f0,
-    0x00000080, 0x00000000, 0x00000000, 0x00000000,
+};
+uint32_t down_2[24] = {
+    0x0000b84b, 0x00130218, 0x02000000, 0x00000000,
+    0x00083bff, 0xffffffff, 0x5f3b3f2f, 0x2d090000,
+    0x3bf7f6fe, 0xffffffff, 0xf6fefdff, 0xfff70000,
+    0x40000000, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
@@ -145,16 +132,7 @@ void print_dina(game_t *game) {
                 uint8_t str[4];
                uint32_t char4;
             } data;
-            data.char4 = 0;
-            data.char4 |= spread_bits(game->screen[y * game->weight + x] & mask) << 7;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 1) & mask) << 6;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 8) & mask) << 5;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 9) & mask) << 2;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 16) & mask) << 4;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 17) & mask) << 1;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 24) & mask) << 3;
-            data.char4 |= spread_bits((game->screen[y * game->weight + x] >> 25) & mask);
-
+            data.char4 = game->screen[y * game->weight + x];
             wprintf(L"%lc%lc%lc%lc", 0x2800 | data.str[3], 0x2800 | data.str[2], 0x2800 | data.str[1], 0x2800 | data.str[0]);
         }
         wprintf(L"\n");
@@ -224,13 +202,13 @@ void update_console_events(game_t *game) {
     if (game->y == 0) game->dy = space ? 5 : 0;
     game->step ^= 1;
 
-    const uint32_t (*tile)[4] = idle;
+    const uint32_t *tile = idle;
     if (crouch) tile = game->step ? down_1 : down_2;
     else tile = game->step ? run_1 : run_2;
 
     for (int y = 0; y < 6; ++y) {
         for (int x = 0; x < 4; ++x) {
-            game->screen[(y + game->y) * game->weight + x] = tile[y][x];
+            game->screen[(y + game->y) * game->weight + x] = tile[y * 4 + x];
         }
     }
 }
@@ -249,8 +227,6 @@ void* drawing_thread(void* arg) {
 }
 
 int main() {
-    // print_dina_loh(down_1);
-    // printf("\n");
     setlocale(LC_CTYPE, "");
     pthread_t input_tid, draw_tid;
     pthread_mutex_init(&key_mutex, NULL);
