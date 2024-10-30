@@ -268,7 +268,7 @@ void update_console_events(game_t *game) {
 void *drawing_thread(void *arg) {
     game_t game = {};
     while (running) {
-        usleep(32000);
+        usleep(64000);
         update_console_events(&game);
         print_dina(&game);
     }
