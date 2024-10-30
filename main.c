@@ -22,7 +22,11 @@ struct winsize w;
 uint64_t time_s;
 
 typedef enum {
-    pterodactyl = 1,
+    pterodactyl_type = 1,
+    cactus_type_1 = 2,
+    cactus_type_2 = 3,
+    cactus_type_3 = 4,
+    cactus_type_4 = 5,
 } enemy_type;
 
 typedef struct {
@@ -72,7 +76,6 @@ void *input_thread(void *_) {
     return NULL;
 }
 
-
 uint64_t get_time() {
     struct timeval tv;
 
@@ -80,19 +83,16 @@ uint64_t get_time() {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-
 void print_dina(const game_t *game) {
     system("clear");
     for (int y = game->height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game->screen + y * game->weight;
         for (int x = 0; x < game->weight; ++x) {
-            wprintf(L"%lc", 0x2800 | screen_raw[x]);
-        }
-        wprintf(L"\n");
+    //         wprintf(L"%lc", 0x2800 | screen_raw[x]);
+    }
+    //     wprintf(L"\n");
     }
 }
-
-
 void keyboard_handler(game_t *game) {
     pthread_mutex_lock(&key_mutex);
     const uint8_t c = last_key; // Get the last key pressed
@@ -116,8 +116,6 @@ void keyboard_handler(game_t *game) {
     game->space = space;
     game->crouch = crouch;
 }
-
-
 void player_movement(game_t *game) {
     const uint64_t score = (get_time() - time_s) / 50;
     uint32_t speed = 3 + score / 300;
@@ -134,7 +132,84 @@ void player_movement(game_t *game) {
     game->score = score;
     game->speed = speed;
 }
+void draw_ground(game_t *game) {
+    const uint64_t size = game->weight / 2 + (game->weight % 2 != 0) + 1;
+    if (size > game->ground_size) {
+        game->ground_size = size;
+        game->ground = malloc(GROUND_H * size * sizeof(uint32_t));
+        memset(game->ground, 0, GROUND_H * size * sizeof(uint32_t));
+        for (int y = 0; y < GROUND_H; ++y) {
+            uint32_t *_ground_raw = &game->ground[y * size];
+            for (int x = 0; x < size; ++x) {
+                _ground_raw[x] = ground[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];
+            }
+        }
+    }
 
+    for (int y = 0; y < GROUND_H; ++y) {
+        uint32_t *_ground_raw = &game->ground[y * size];
+        const uint8_t *ground_raw = (uint8_t *)_ground_raw;
+        uint8_t *screen_raw = game->screen + y * game->weight;
+
+        for (int x = 0; x < size * 4 && x < game->weight; ++x) {
+            screen_raw[x] |= ground_raw[(x + game->x) % (size * 4)];
+        }
+        _ground_raw[(size - 1 + game->x / 4) % size] = ground[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];
+    }
+    game->x = (int32_t) ((game->x + game->speed) % (size * 4));
+}
+void draw_player(const game_t *game) {
+    if (game->crouch) tile = game->score & 2 ? down_1 : down_2;
+    else tile = game->score & 2 ? run_1 : run_2;
+
+    for (int y = 0; y < DINO_H; ++y) {
+        const uint32_t *dino_raw = &tile[y * DINO_W];
+        uint32_t *screen_raw = (uint32_t *) (game->screen + (y + game->y + 1) * game->weight);
+        for (int x = 0; x < DINO_W; ++x) {
+            screen_raw[x] |= dino_raw[x];
+        }
+    }
+}
+uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
+    switch (type) {
+        case pterodactyl_type:
+            return step? pterodactyl_1 : pterodactyl_2;
+        case cactus_type_1:
+            return cactus_1;
+        case cactus_type_2:
+            return cactus_2;
+        case cactus_type_3:
+            return cactus_3;
+        case cactus_type_4:
+            return cactus_4;
+        default: return NULL;
+    }
+}
+void draw_enemy(game_t *game) {
+    if (game->e_type == 0) {
+        // TODO random enemy;
+        game->e_type = rand() % ENEMY_TYPES + 1;
+        game->e_x = game->weight;
+        game->e_y = (rand() & 1) && game->e_type == pterodactyl_type ? 5 : 0;
+    }
+
+    uint32_t *enemy_tile = get_enemy(game->e_type, game->score & 2);
+    if (enemy_tile == NULL) return;
+
+    uint8_t ok = 1;
+    for (int y = 0; y < ENEMY_H; ++y) {
+        const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
+        uint8_t *screen_raw = game->screen + (y + game->e_y + 1) * game->weight;
+        for (int x = 0; x < ENEMY_W * 4; ++x) {
+            if (x + game->e_x < 0) continue;
+            ok = 0;
+            if (x + game->e_x >= w.ws_col) continue;
+            screen_raw[x + game->e_x] |= enemy_raw[x];
+        }
+    }
+    game->e_x -= (int32_t) game->speed;
+    if (ok) game->e_type = 0;
+}
 
 void update_console_events(game_t *game) {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
@@ -147,73 +222,14 @@ void update_console_events(game_t *game) {
         game->size = game->weight * game->height;
         game->screen = malloc(game->size);
 
-        // Generate First Ground
-        game->ground_size = game->weight / 2 + (game->weight % 2 != 0) + 1;
-        game->ground = malloc(2 * game->ground_size * sizeof(uint32_t));
-        memset(game->ground, 0, 2 * game->ground_size * sizeof(uint32_t));
-        for (int y = 0; y < 2; ++y) {
-            uint32_t *ground_raw = &game->ground[y * game->ground_size];
-            for (int x = 0; x < game->ground_size; ++x) {
-                ground_raw[x] = ground[y][(rand() & 0x07) == 0x07 ? (rand() & 1) : 2];
-            }
-        }
     }
     memset(game->screen, 0, game->size);
 
     keyboard_handler(game);
     player_movement(game);
-
-
-    if (game->crouch) tile = game->score & 2 ? down_1 : down_2;
-    else tile = game->score & 2 ? run_1 : run_2;
-
-    // Enemyes
-    if (game->e_type == 0) {
-        // TODO random enemy;
-        game->e_type = pterodactyl;
-        game->e_x = game->weight;
-        if (game->e_type == pterodactyl)
-            game->e_y = (rand() & 1) ? 5 : 0;
-    }
-
-    uint8_t ok = 1;
-    for (int y = 0; y < ENEMY_H; ++y) {
-        const uint8_t *enemy_raw = (uint8_t *) (((game->score & 2) ? pterodactyl_1 : pterodactyl_2) + y * ENEMY_W);
-        uint8_t *screen_raw = game->screen + (y + game->e_y + 1) * game->weight;
-        for (int x = 0; x < ENEMY_W * 4; ++x) {
-            if (x + game->e_x < 0) continue;
-            ok = 0;
-            if (x + game->e_x >= w.ws_col) continue;
-            screen_raw[x + game->e_x] |= enemy_raw[x];
-        }
-    }
-    game->e_x -= game->speed;
-    if (ok) game->e_type = 0;
-
-
-    // Dino
-    for (int y = 0; y < DINO_H; ++y) {
-        uint8_t *dino_raw = (uint8_t *) &tile[y * DINO_W];
-        uint8_t *screen_raw = game->screen + (y + game->y + 1) * game->weight;
-        for (int x = 0; x < DINO_W * 4; ++x) {
-            // if (screen_raw[x] & dino_raw[x]) {
-            //     running = 0;
-            // }
-            screen_raw[x] |= dino_raw[x];
-        }
-    }
-
-    // Ground
-    for (int y = 0; y < 2; ++y) {
-        uint8_t *screen_raw = game->screen + y * game->weight;
-        uint8_t *ground_raw = (uint8_t *)(game->ground + y * game->ground_size);
-
-        for (int x = 0; x < game->ground_size * 4 && x < game->weight; ++x) {
-            screen_raw[x] |= ground_raw[(x + game->x) % (game->ground_size * 4)];
-        }
-        game->ground[y * game->ground_size + (game->ground_size - 1 + game->x / 4) % game->ground_size] = ground[y][(rand() & 0x07) == 0x07 ? (rand() & 1) : 2];
-    }
-    game->x = (int32_t) ((game->x + game->speed) % (game->ground_size * 4));
+    draw_ground(game);
+    draw_player(game);
+    draw_enemy(game);
 }
 
 // Drawing thread to simulate console drawing
@@ -226,6 +242,23 @@ void *drawing_thread(void *arg) {
     }
     return NULL;
 }
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <locale.h>
+#include <wchar.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <stdint.h>
+#include <string.h>
+#include <ncurses.h>
+#include <stdio.h>
+#include <sys/time.h>
+
 
 
 int main() {
