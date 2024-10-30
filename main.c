@@ -243,6 +243,7 @@ void *drawing_thread(void *arg) {
 int main() {
     time_s = get_time();
     setlocale(LC_CTYPE, "");
+    wprintf(L"\e[?25l");
     // print_dina_make_objects(gr_t1, 4, 8);
     // printf("\n");
     pthread_t input_tid;
