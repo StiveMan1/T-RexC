@@ -3,14 +3,11 @@
 #include <unistd.h>
 #include <locale.h>
 #include <wchar.h>
-#include <fcntl.h>
 #include <termios.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <string.h>
-#include <ncurses.h>
-#include <stdio.h>
 #include <sys/time.h>
 #include "game_objects.h"
 
@@ -242,24 +239,6 @@ void *drawing_thread(void *arg) {
     }
     return NULL;
 }
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <locale.h>
-#include <wchar.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <pthread.h>
-#include <sys/ioctl.h>
-#include <stdint.h>
-#include <string.h>
-#include <ncurses.h>
-#include <stdio.h>
-#include <sys/time.h>
-
-
 
 int main() {
     time_s = get_time();
