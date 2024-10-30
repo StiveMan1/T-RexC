@@ -156,13 +156,19 @@ void draw_ground(game_t *game) {
     game->x = (int32_t) ((game->x + game->speed) % (size * 4));
 }
 void draw_player(const game_t *game) {
-    if (game->crouch) tile = game->score & 2 ? down_1 : down_2;
-    else tile = game->score & 2 ? run_1 : run_2;
+    const uint32_t *tile_dino = NULL;
+    if (game->crouch) tile_dino = game->score & 2 ? down_1 : down_2;
+    else tile_dino = game->score & 2 ? run_1 : run_2;
+    const uint32_t *tile_back = NULL;
+    if (game->crouch) tile_back = game->score & 2 ? down_1_r : down_2_r;
+    else tile_back = game->score & 2 ? run_1_r : run_2_r;
 
     for (int y = 0; y < DINO_H; ++y) {
-        const uint32_t *dino_raw = &tile[y * DINO_W];
+        const uint32_t *dino_raw = &tile_dino[y * DINO_W];
+        const uint32_t *back_raw = &tile_back[y * DINO_W];
         uint32_t *screen_raw = (uint32_t *) (game->screen + (y + game->y + 1) * game->weight);
         for (int x = 0; x < DINO_W; ++x) {
+            screen_raw[x] &= back_raw[x];
             screen_raw[x] |= dino_raw[x];
         }
     }
@@ -244,8 +250,6 @@ int main() {
     time_s = get_time();
     setlocale(LC_CTYPE, "");
     wprintf(L"\e[?25l");
-    // print_dina_make_objects(gr_t1, 4, 8);
-    // printf("\n");
     pthread_t input_tid;
     pthread_mutex_init(&key_mutex, NULL);
 
