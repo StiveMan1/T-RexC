@@ -13,11 +13,11 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-volatile uint8_t running = 1;  // Shared variable to control the loop
+volatile uint8_t running = 1; // Shared variable to control the loop
 volatile uint8_t last_key = '\0'; // Shared variable to store the last key pressed
-pthread_mutex_t key_mutex;  // Mutex for synchronizing access to `last_key`
+pthread_mutex_t key_mutex; // Mutex for synchronizing access to `last_key`
 struct winsize w;
-struct timespec time_s, time_c;
+uint64_t time_s, time_c;
 
 typedef enum {
     pterodactyl = 1,
@@ -28,28 +28,31 @@ typedef struct {
     uint8_t weight;
     uint8_t size;
 
-    int8_t y;
-    int8_t dy;
-    uint8_t step;
+    int32_t x;
+    int32_t y;
+    int32_t dy;
+
+    uint64_t stamp;
 
     uint32_t *screen;
-    struct {
-        enemy_type type;
-        int32_t pos_y;
-        int32_t pos_x;
-    } enemy[2];
+
+
+    enemy_type e_type;
+    int32_t e_x;
+    int32_t e_y;
 } game_t;
 
 // Input thread to capture key presses
-void* input_thread(void* _) {
+void *input_thread(void *_) {
     struct termios oldt, newt;
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);  // Disable canonical mode and echo
+    newt.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echo
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
     while (running) {
         const int32_t ch = getchar();
         if (ch == EOF) continue;
+
         pthread_mutex_lock(&key_mutex);
         last_key = ch;
         pthread_mutex_unlock(&key_mutex);
@@ -58,30 +61,6 @@ void* input_thread(void* _) {
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     return NULL;
 }
-
-// int buf[21][20] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,},
-//                {1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
-//                {1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
-//                {1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,},
-//                {1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0,},
-//                {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
-//                {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,},
-//                {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,},
-//                {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,}};
-
-
 
 uint32_t idle[24] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,
@@ -145,18 +124,26 @@ uint32_t pterodactyl_2[15] = {
     0xc6fffee0, 0x00e6ffff, 0x00000000,
     0x38c00000, 0x000040e6, 0x00000000,
 };
-uint32_t ground[] = {
-    0x20000000, 0x00000424, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00200000, 0x40c0c080, 0x00000024, 0x00000000, 0x00000000, 0x00000000, 0x20021212, 0xc0800004, 0x00000040, 0x00000000, 0x00000000,
-    0x00000000, 0x00000000, 0x12121000, 0x00000000, 0x000040c0, 0x00242400, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x12121000, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00242400,
-    0x02121200, 0x80000000, 0x000000c0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00002400,
-    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x24120800, 0x12242424, 0x00000001, 0x00000000, 0x00000000, 0x00000000,
+uint32_t ground[2 * 68] = {
+    0x20000000, 0x00000424, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00200000, 0x40c0c080, 0x00000024,
+    0x00000000, 0x00000000, 0x00000000, 0x20021212, 0xc0800004, 0x00000040, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x12121000, 0x00000000, 0x000040c0, 0x00242400, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x12121000, 0x00000002, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00242400, 0x02121200, 0x80000000,
+    0x000000c0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00002400, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x24120800,
+    0x12242424, 0x00000001, 0x00000000, 0x00000000, 0x00000000,
 
-    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
-    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
-    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
-    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0x0a14c0c0, 0x84120909, 0xc0c0c0c0, 0x000040c0, 0x00000000, 0xc0c0c080, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
+    0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0, 0x0a14c0c0, 0x84120909, 0xc0c0c0c0, 0x000040c0,
+    0x00000000, 0xc0c0c080, 0xc0c0c0c0, 0xc0c0c0c0, 0xc0c0c0c0,
 };
-
+uint32_t *tile = idle;
 
 uint32_t mask = 0b01010101;
 
@@ -164,10 +151,17 @@ uint32_t spread_bits(const uint32_t x) {
     return (x & 0b00000001) | ((x & 0b00000100) << 6) | ((x & 0b00010000) << 12) | ((x & 0b01000000) << 18);
 }
 
+uint64_t get_time() {
+    struct timeval tv;
+
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
 void print_dina(const game_t *game) {
     system("clear");
     for (int y = game->height - 1; y >= 0; --y) {
-        const uint8_t *screen_raw = (uint8_t *)game->screen + y * game->weight;
+        const uint8_t *screen_raw = (uint8_t *) game->screen + y * game->weight;
         for (int x = 0; x < game->weight; ++x) {
             wprintf(L"%lc", 0x2800 | screen_raw[x]);
         }
@@ -187,8 +181,8 @@ void update_console_events(game_t *game) {
     memset(game->screen, 0, game->weight * game->height * sizeof(uint32_t));
     game->size = game->weight * game->height;
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &time_c);
-    uint32_t score = (time_c.tv_sec - time_s.tv_sec) * 10000 + (time_c.tv_nsec - time_s.tv_nsec) / 100000;
+    time_c = get_time();
+    uint64_t score = (time_c - time_s) / 50;
     uint32_t speed = 3 + score / 300;
     if (speed > 7) speed = 7;
 
@@ -209,45 +203,44 @@ void update_console_events(game_t *game) {
         case 66:
             crouch = 1;
             break;
-        default:;
+        default: ;
     }
 
-    game->y = game->y + game->dy > 0? game->y + game->dy-- : 0;
+    // Jump Calculations
+    game->y = game->y + game->dy / 2 > 0 ? game->y + (game->dy--) / 2 : 0;
     if (crouch && game->dy != 0) --game->dy;
-    if (game->y == 0) game->dy = space ? 5 : 0;
-    game->step = (game->step + 1) % 4;
+    if (game->y == 0) game->dy = space ? 8 : 0;
 
 
-    const uint32_t *tile = idle;
-    if (crouch) tile = game->step & 1 ? down_1 : down_2;
-    else tile = game->step & 1 ? run_1 : run_2;
+    if (crouch) tile = score & 2 ? down_1 : down_2;
+    else tile = score & 2 ? run_1 : run_2;
+
+    // Enemyes
+
+    if (game->e_type == 0) {
+        // TODO random enemy;
+        game->e_type = pterodactyl;
+        game->e_x = game->weight;
+        if (game->e_type == pterodactyl)
+            game->e_y = (rand() & 1) ? 5 : 0;
+    }
+
+    uint8_t ok = 1;
+    for (int y = 0; y < 5; ++y) {
+        const uint8_t *enemy_raw = (uint8_t *) (((score & 2) ? pterodactyl_1 : pterodactyl_2) + y * 3);
+        uint8_t *screen_raw = (uint8_t *) (game->screen) + (y + game->e_y) * game->weight;
+        for (int x = 0; x < 3 * 4; ++x) {
+            if (x + game->e_x < 0) continue;
+            ok = 0;
+            if (x + game->e_x >= w.ws_col) continue;
+            screen_raw[x + game->e_x] |= enemy_raw[x];
+        }
+    }
+    game->e_x -= speed;
+    if (ok) game->e_type = 0;
+
 
     // Dino
-
-    for (int e = 0; e < 1; ++e) {
-        if (game->enemy[e].type == 0) {
-            // TODO random enemy;
-            game->enemy[e].type = pterodactyl;
-            game->enemy[e].pos_x = game->weight;
-            if (game->enemy[e].type == pterodactyl)
-                game->enemy[e].pos_y = (rand() & 1) ? 5 : 0;
-            continue;
-        }
-        uint8_t ok = 1;
-        for (int y = 0; y < 5; ++y) {
-            const uint8_t *enemy_raw = (uint8_t *) ((game->step ? pterodactyl_1 : pterodactyl_2) + y * 3);
-            uint8_t *screen_raw = (uint8_t *) (game->screen) + (y + game->enemy[e].pos_y) * game->weight;
-            for (int x = 0; x < 3 * 4; ++x) {
-                if (x + game->enemy[e].pos_x < 0) continue;
-                ok = 0;
-                if (x + game->enemy[e].pos_x >= w.ws_col) continue;
-                screen_raw[x + game->enemy[e].pos_x] |= enemy_raw[x];
-            }
-        }
-        game->enemy[e].pos_x -= speed;
-        if (ok) game->enemy[e].type = 0;
-    }
-
     for (int y = 0; y < 6; ++y) {
         uint8_t *dino_raw = (uint8_t *) (tile + y * 4);
         uint8_t *screen_raw = (uint8_t *) (game->screen) + (y + game->y) * game->weight;
@@ -258,13 +251,24 @@ void update_console_events(game_t *game) {
             screen_raw[x] |= dino_raw[x];
         }
     }
+
+    // Ground
+    for (int y = 0; y < 2; ++y) {
+        const uint8_t *ground_raw = (uint8_t *) (ground + y * 68);
+        uint8_t *screen_raw = (uint8_t *) (game->screen) + y * game->weight;
+
+        for (int x = 0; x < 68 * 4 && x < game->weight; ++x) {
+            screen_raw[x] |= ground_raw[(x + game->x) % (68 * 4)];
+        }
+    }
+    game->x = (game->x + speed) % (68 * 4);
 }
 
 // Drawing thread to simulate console drawing
-void* drawing_thread(void* arg) {
-    game_t game = {0,0,0, 0, 0, 0, NULL, {0, 0, 0}};
+void *drawing_thread(void *arg) {
+    game_t game = {};
     while (running) {
-        usleep(75000);
+        usleep(32000);
         update_console_events(&game);
         print_dina(&game);
     }
@@ -329,7 +333,7 @@ void print_dina_make_objects(uint8_t *buffer, int h, int w) {
 
 
     for (int i = 0; i < _h; i += 4) {
-        for (int j = 0; j < _w;  j += 2) {
+        for (int j = 0; j < _w; j += 2) {
             res[i / 4][j / 2] |= buf[i + 0][j + 0] << 6;
             res[i / 4][j / 2] |= buf[i + 0][j + 1] << 7;
             res[i / 4][j / 2] |= buf[i + 1][j + 0] << 2;
@@ -343,7 +347,7 @@ void print_dina_make_objects(uint8_t *buffer, int h, int w) {
 
     for (int i = 0; i < r_h; ++i) {
         for (int j = 0; j < r_w / 4 + (r_w % 4 != 0); ++j) {
-            printf("0x%.8x, ", ((uint32_t *)res[i])[j]);
+            printf("0x%.8x, ", ((uint32_t *) res[i])[j]);
         }
         printf("\n");
         // for (int j = 0; j < r_w; ++j) {
@@ -352,12 +356,10 @@ void print_dina_make_objects(uint8_t *buffer, int h, int w) {
         // wprintf(L"\n");
     }
 }
-int main() {
-    clock_gettime(CLOCK_MONOTONIC_RAW, &time_s);
-    setlocale(LC_CTYPE, "");
 
-    // print_dina_make_objects(pt_2, 21, 20);
-    // printf("\n");
+int main() {
+    time_s = get_time();
+    setlocale(LC_CTYPE, "");
 
     pthread_t input_tid, draw_tid;
     pthread_mutex_init(&key_mutex, NULL);
