@@ -85,9 +85,9 @@ void print_dina(const game_t *game) {
     for (int y = game->height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game->screen + y * game->weight;
         for (int x = 0; x < game->weight; ++x) {
-    //         wprintf(L"%lc", 0x2800 | screen_raw[x]);
-    }
-    //     wprintf(L"\n");
+            wprintf(L"%lc", 0x2800 | screen_raw[x]);
+        }
+        wprintf(L"\n");
     }
 }
 void keyboard_handler(game_t *game) {
