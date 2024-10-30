@@ -19,7 +19,7 @@ volatile uint8_t running = 1; // Shared variable to control the loop
 volatile uint8_t last_key = '\0'; // Shared variable to store the last key pressed
 pthread_mutex_t key_mutex; // Mutex for synchronizing access to `last_key`
 struct winsize w;
-uint64_t time_s, time_c;
+uint64_t time_s;
 
 typedef enum {
     pterodactyl = 1,
@@ -32,6 +32,9 @@ typedef struct {
 
     uint8_t space;
     uint8_t crouch;
+
+    uint64_t score;
+    uint32_t speed;
 
     int32_t x;
     int32_t y;
@@ -77,6 +80,7 @@ uint64_t get_time() {
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+
 void print_dina(const game_t *game) {
     system("clear");
     for (int y = game->height - 1; y >= 0; --y) {
@@ -114,6 +118,24 @@ void keyboard_handler(game_t *game) {
 }
 
 
+void player_movement(game_t *game) {
+    const uint64_t score = (get_time() - time_s) / 50;
+    uint32_t speed = 3 + score / 300;
+    if (speed > 7) speed = 7;
+
+    // Jump Calculations
+    if (game->stamp != 0) {
+        int32_t dt = (int32_t) (score - game->stamp) / 2;
+        dt = (-dt + 8) * dt;
+        game->y = dt > 0 ? dt : 0;
+        if (game->crouch) game->stamp -= 2;
+    }
+    if (game->y == 0) game->stamp = game->space ? score - 2 : 0;
+    game->score = score;
+    game->speed = speed;
+}
+
+
 void update_console_events(game_t *game) {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
     if (w.ws_col == 0) return;
@@ -138,25 +160,12 @@ void update_console_events(game_t *game) {
     }
     memset(game->screen, 0, game->size);
 
-    time_c = get_time();
-    uint64_t score = (time_c - time_s) / 50;
-    uint32_t speed = 3 + score / 300;
-    if (speed > 7) speed = 7;
-
     keyboard_handler(game);
-
-    // Jump Calculations
-    if (game->stamp != 0) {
-        int32_t dt = (int32_t) (score - game->stamp) / 2;
-        dt = (-dt + 8) * dt;
-        game->y = dt > 0 ? dt : 0;
-        if (game->crouch) game->stamp -= 2;
-    }
-    if (game->y == 0) game->stamp = game->space ? score - 2 : 0;
+    player_movement(game);
 
 
-    if (game->crouch) tile = score & 2 ? down_1 : down_2;
-    else tile = score & 2 ? run_1 : run_2;
+    if (game->crouch) tile = game->score & 2 ? down_1 : down_2;
+    else tile = game->score & 2 ? run_1 : run_2;
 
     // Enemyes
     if (game->e_type == 0) {
@@ -169,7 +178,7 @@ void update_console_events(game_t *game) {
 
     uint8_t ok = 1;
     for (int y = 0; y < ENEMY_H; ++y) {
-        const uint8_t *enemy_raw = (uint8_t *) (((score & 2) ? pterodactyl_1 : pterodactyl_2) + y * ENEMY_W);
+        const uint8_t *enemy_raw = (uint8_t *) (((game->score & 2) ? pterodactyl_1 : pterodactyl_2) + y * ENEMY_W);
         uint8_t *screen_raw = game->screen + (y + game->e_y + 1) * game->weight;
         for (int x = 0; x < ENEMY_W * 4; ++x) {
             if (x + game->e_x < 0) continue;
@@ -178,7 +187,7 @@ void update_console_events(game_t *game) {
             screen_raw[x + game->e_x] |= enemy_raw[x];
         }
     }
-    game->e_x -= speed;
+    game->e_x -= game->speed;
     if (ok) game->e_type = 0;
 
 
@@ -204,7 +213,7 @@ void update_console_events(game_t *game) {
         }
         game->ground[y * game->ground_size + (game->ground_size - 1 + game->x / 4) % game->ground_size] = ground[y][(rand() & 0x07) == 0x07 ? (rand() & 1) : 2];
     }
-    game->x = (game->x + speed) % (game->ground_size * 4);
+    game->x = (int32_t) ((game->x + game->speed) % (game->ground_size * 4));
 }
 
 // Drawing thread to simulate console drawing
