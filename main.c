@@ -30,6 +30,9 @@ typedef struct {
     int32_t weight;
     uint64_t size;
 
+    uint8_t space;
+    uint8_t crouch;
+
     int32_t x;
     int32_t y;
     int32_t dy;
@@ -86,6 +89,30 @@ void print_dina(const game_t *game) {
 }
 
 
+void keyboard_handler(game_t *game) {
+    pthread_mutex_lock(&key_mutex);
+    const uint8_t c = last_key; // Get the last key pressed
+    last_key = '\0';
+    pthread_mutex_unlock(&key_mutex);
+
+    uint8_t space = 0;
+    uint8_t crouch = 0;
+
+    switch (c) {
+        case 10:
+        case 32:
+        case 65:
+            space = 1;
+        break;
+        case 66:
+            crouch = 1;
+        break;
+        default: ;
+    }
+    game->space = space;
+    game->crouch = crouch;
+}
+
 
 void update_console_events(game_t *game) {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
@@ -116,37 +143,19 @@ void update_console_events(game_t *game) {
     uint32_t speed = 3 + score / 300;
     if (speed > 7) speed = 7;
 
-    pthread_mutex_lock(&key_mutex);
-    const uint8_t c = last_key; // Get the last key pressed
-    last_key = '\0';
-    pthread_mutex_unlock(&key_mutex);
-
-    uint8_t space = 0;
-    uint8_t crouch = 0;
-
-    switch (c) {
-        case 10:
-        case 32:
-        case 65:
-            space = 1;
-            break;
-        case 66:
-            crouch = 1;
-            break;
-        default: ;
-    }
+    keyboard_handler(game);
 
     // Jump Calculations
     if (game->stamp != 0) {
         int32_t dt = (int32_t) (score - game->stamp) / 2;
         dt = (-dt + 8) * dt;
         game->y = dt > 0 ? dt : 0;
-        if (crouch) game->stamp -= 2;
+        if (game->crouch) game->stamp -= 2;
     }
-    if (game->y == 0) game->stamp = space ? score - 2 : 0;
+    if (game->y == 0) game->stamp = game->space ? score - 2 : 0;
 
 
-    if (crouch) tile = score & 2 ? down_1 : down_2;
+    if (game->crouch) tile = score & 2 ? down_1 : down_2;
     else tile = score & 2 ? run_1 : run_2;
 
     // Enemyes
