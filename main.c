@@ -284,7 +284,7 @@ void update_console_events() {
 // Drawing thread to simulate console drawing
 void drawing_thread() {
     while (running) {
-        usleep(50000);
+        usleep(game.height * game.weight * 10);
         update_console_events();
         print_dina();
     }
