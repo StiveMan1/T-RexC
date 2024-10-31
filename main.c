@@ -90,7 +90,6 @@ uint64_t get_time() {
 
 void print_dina() {
     system("clear");
-    usleep(1);
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
         for (int x = 0; x < game.weight; ++x) {
@@ -284,7 +283,7 @@ void update_console_events() {
 // Drawing thread to simulate console drawing
 void drawing_thread() {
     while (running) {
-        usleep(game.height * game.weight * 10);
+        usleep(32000);
         update_console_events();
         print_dina();
     }
