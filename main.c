@@ -112,7 +112,6 @@ void keyboard_handler() {
         case 32:
         case 65:
             space = 1;
-            wprintf(L"\a");
         break;
         case 66:
             crouch = 1;
@@ -225,7 +224,7 @@ void draw_enemy() {
         // TODO random enemy;
         game.e_type = rand() % ENEMY_TYPES + 1;
         game.e_x = game.weight;
-        game.e_y = (rand() & 1) && game.e_type == pterodactyl_type ? 5 : 0;
+        game.e_y = (rand() & 1) && game.e_type == pterodactyl_type ? 4 : 0;
     }
 
     uint32_t *enemy_tile = get_enemy(game.e_type, game.score & 2);
