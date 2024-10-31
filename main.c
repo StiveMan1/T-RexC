@@ -16,7 +16,6 @@ volatile uint8_t running = 1; // Shared variable to control the loop
 volatile uint8_t last_key = '\0'; // Shared variable to store the last key pressed
 pthread_mutex_t key_mutex; // Mutex for synchronizing access to `last_key`
 struct winsize w;
-uint64_t time_s;
 
 typedef enum {
     pterodactyl_type = 1,
@@ -26,10 +25,19 @@ typedef enum {
     cactus_type_4 = 5,
 } enemy_type;
 
+typedef enum {
+    state_start = 0,
+    state_running = 1,
+    state_death = 2,
+} game_states;
+
 struct game_t {
     int32_t height;
     int32_t weight;
     uint64_t size;
+
+    game_states state;
+    uint64_t time_start;
 
     uint8_t space;
     uint8_t crouch;
@@ -82,6 +90,7 @@ uint64_t get_time() {
 
 void print_dina() {
     system("clear");
+    usleep(1);
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
         for (int x = 0; x < game.weight; ++x) {
@@ -104,19 +113,27 @@ void keyboard_handler() {
         case 32:
         case 65:
             space = 1;
+            wprintf(L"\a");
         break;
         case 66:
             crouch = 1;
         break;
         default: ;
     }
+    if (game.state != state_running && (space || crouch)) {
+        game.state = state_running;
+        game.time_start = get_time();
+        game.e_type = 0;
+    }
     game.space = space;
     game.crouch = crouch;
 }
 void player_movement() {
-    const uint64_t score = (get_time() - time_s) / 50;
+    const uint64_t score = (get_time() - game.time_start) / 50;
     uint32_t speed = 3 + score / 300;
     if (speed > 7) speed = 7;
+    if (game.state == state_start) speed = 3;
+    if (game.state == state_death) speed = 0;
 
     // Jump Calculations
     if (game.stamp != 0) {
@@ -157,21 +174,32 @@ void draw_ground() {
 }
 void draw_player() {
     const uint32_t *tile_dino = NULL;
-    if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
-    else tile_dino = game.score & 2 ? run_1 : run_2;
     const uint32_t *tile_back = NULL;
-    if (game.crouch) tile_back = game.score & 2 ? down_1_r : down_2_r;
-    else tile_back = game.score & 2 ? run_1_r : run_2_r;
+    if (game.state != state_death) {
+        if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
+        else tile_dino = game.score & 2 ? run_1 : run_2;
+        if (game.crouch) tile_back = game.score & 2 ? down_1_r : down_2_r;
+        else tile_back = game.score & 2 ? run_1_r : run_2_r;
+    } else tile_dino = death;
+
+    if (tile_back != NULL) {
+        for (int y = 0; y < DINO_H; ++y) {
+            const uint32_t *back_raw = &tile_back[y * DINO_W];
+            uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
+            for (int x = 0; x < DINO_W; ++x) {
+                screen_raw[x] &= back_raw[x];
+            }
+        }
+    }
 
     for (int y = 0; y < DINO_H; ++y) {
         const uint32_t *dino_raw = &tile_dino[y * DINO_W];
-        const uint32_t *back_raw = &tile_back[y * DINO_W];
         uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
         for (int x = 0; x < DINO_W; ++x) {
-            screen_raw[x] &= back_raw[x];
             screen_raw[x] |= dino_raw[x];
         }
     }
+
 }
 uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
     switch (type) {
@@ -189,6 +217,7 @@ uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
     }
 }
 void draw_enemy() {
+    if (game.state == state_start) return;
     if (game.e_type == 0) {
         // TODO random enemy;
         game.e_type = rand() % ENEMY_TYPES + 1;
@@ -213,6 +242,22 @@ void draw_enemy() {
     game.e_x -= (int32_t) game.speed;
     if (ok) game.e_type = 0;
 }
+void cheak_death() {
+    const uint32_t *tile_dino = NULL;
+    if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
+    else tile_dino = game.score & 2 ? run_1 : run_2;
+
+    for (int y = 0; y < DINO_H; ++y) {
+        const uint32_t *dino_raw = &tile_dino[y * DINO_W];
+        const uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
+        for (int x = 0; x < DINO_W; ++x) {
+            if (screen_raw[x] & dino_raw[x]) {
+                game.state = state_death;
+                return;
+            }
+        }
+    }
+}
 
 void update_console_events() {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
@@ -228,25 +273,24 @@ void update_console_events() {
     }
     memset(game.screen, 0, game.size);
 
-    keyboard_handler(game);
-    player_movement(game);
-    draw_ground(game);
-    draw_player(game);
-    draw_enemy(game);
+    keyboard_handler();
+    player_movement();
+    draw_enemy();
+    cheak_death();
+    draw_ground();
+    draw_player();
 }
 
 // Drawing thread to simulate console drawing
-void *drawing_thread(void *arg) {
+void drawing_thread() {
     while (running) {
-        usleep(32000);
-        update_console_events(&game);
-        print_dina(&game);
+        usleep(50000);
+        update_console_events();
+        print_dina();
     }
-    return NULL;
 }
 
 int main() {
-    time_s = get_time();
     setlocale(LC_CTYPE, "");
     wprintf(L"\e[?25l");
     pthread_t input_tid;
