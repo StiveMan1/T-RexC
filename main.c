@@ -132,7 +132,11 @@ void player_movement() {
     uint32_t speed = 3 + score / 300;
     if (speed > 7) speed = 7;
     if (game.state == state_start) speed = 3;
-    if (game.state == state_death) speed = 0;
+    if (game.state == state_death) {
+        game.score = 0;
+        game.speed = 0;
+        return;
+    }
 
     // Jump Calculations
     if (game.stamp != 0) {
