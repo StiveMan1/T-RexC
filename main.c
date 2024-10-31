@@ -92,7 +92,7 @@ void print_dina() {
     system("clear");
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
-        for (int x = 0; x < game.weight; ++x) {
+        for (int x = 0; x < w.ws_col; ++x) {
             wprintf(L"%lc", 0x2800 | screen_raw[x]);
         }
         wprintf(L"\n");
@@ -186,7 +186,7 @@ void draw_player() {
     } else tile_dino = death;
 
     if (tile_back != NULL) {
-        for (int y = 0; y < DINO_H; ++y) {
+        for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
             const uint32_t *back_raw = &tile_back[y * DINO_W];
             uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
             for (int x = 0; x < DINO_W; ++x) {
@@ -195,7 +195,7 @@ void draw_player() {
         }
     }
 
-    for (int y = 0; y < DINO_H; ++y) {
+    for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
         const uint32_t *dino_raw = &tile_dino[y * DINO_W];
         uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
         for (int x = 0; x < DINO_W; ++x) {
@@ -232,7 +232,7 @@ void draw_enemy() {
     if (enemy_tile == NULL) return;
 
     uint8_t ok = 1;
-    for (int y = 0; y < ENEMY_H; ++y) {
+    for (int y = 0; y < ENEMY_H && y + 1 + game.e_y < game.height; ++y) {
         const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
         uint8_t *screen_raw = game.screen + (y + game.e_y + 1) * game.weight;
         for (int x = 0; x < ENEMY_W * 4; ++x) {
@@ -250,7 +250,7 @@ void cheak_death() {
     if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
     else tile_dino = game.score & 2 ? run_1 : run_2;
 
-    for (int y = 0; y < DINO_H; ++y) {
+    for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
         const uint32_t *dino_raw = &tile_dino[y * DINO_W];
         const uint32_t *screen_raw = (uint32_t *) (game.screen + (y + game.y + 1) * game.weight);
         for (int x = 0; x < DINO_W; ++x) {
@@ -266,7 +266,7 @@ void update_console_events() {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
     if (w.ws_col == 0) return;
     game.height = w.ws_row;
-    game.weight = w.ws_col;
+    game.weight = (w.ws_col / 4 + (w.ws_col % 4 != 0)) * 4;
 
     if (game.weight * game.height > game.size) {
         if (game.screen != NULL) free(game.screen);
