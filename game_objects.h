@@ -14,7 +14,7 @@
 
 #define ENEMY_COUNT 2
 #define ENEMY_TYPES 5
-#define ENEMY_MIN_DISTANCE 10
+#define ENEMY_MIN_DISTANCE 15
 
 uint32_t idle[DINO_H * DINO_W] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,

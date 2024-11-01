@@ -59,7 +59,7 @@ struct game_t {
         enemy_type e_type;
         int32_t e_x;
         int32_t e_y;
-    } enemies[2];
+    } enemies[ENEMY_COUNT];
 
 
 } game;
@@ -97,7 +97,7 @@ void print_dina() {
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
         for (int x = 0; x < w.ws_col; ++x) {
-            wprintf(L"%lc", 0x2800 | (0xFF ^ screen_raw[x]));
+            wprintf(L"%lc", 0x2800 | (0x00 ^ screen_raw[x]));
         }
         wprintf(L"\n");
     }
@@ -226,11 +226,20 @@ uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
     }
 }
 void draw_enemy() {
+
+    int32_t x = 0;
+    for (int e = 0; e < ENEMY_COUNT; ++e)
+        if (x < game.enemies[e].e_x) x = game.enemies[e].e_x;
+
+
     for (int e = 0; e < ENEMY_COUNT; ++e) {
         struct enemy_st *enemy = &game.enemies[e];
         if (enemy->e_type == 0) {
+            const int32_t min_distance = game.speed * (ENEMY_MIN_DISTANCE + rand() % 10);
             enemy->e_type = rand() % ENEMY_TYPES + 1;
             enemy->e_x = game.weight;
+            if (enemy->e_x < min_distance + x) enemy->e_x = min_distance + x;
+            if (x < enemy->e_x) x = enemy->e_x;
             enemy->e_y = (rand() & 1) && enemy->e_type == pterodactyl_type ? 4 : 0;
         }
 
