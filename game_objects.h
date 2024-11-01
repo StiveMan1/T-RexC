@@ -10,11 +10,13 @@
 #define GROUND_H 3
 #define GROUND_W 3
 #define CLOUD_H 3
-#define CLOUD_W 5
+#define CLOUD_W 4
+#define DIGIT_H 2
+#define DIGIT_W 1
 
 #define ENEMY_COUNT 2
 #define ENEMY_TYPES 5
-#define ENEMY_MIN_DISTANCE 15
+#define ENEMY_MIN_DISTANCE 8
 
 #define CLOUD_COUNT 5
 #define CLOUD_MIN_DISTANCE 5
@@ -148,9 +150,55 @@ uint32_t ground_1[GROUND_H][GROUND_W] = {
     0xc0c0c0c0, 0x84221224, 0xc0c0c0c0,
 };
 uint32_t cloud_1[CLOUD_H * CLOUD_W] = {
-    0x2a340420, 0xc0d2c8c9, 0xc1c0c0c0, 0xd2c8c0c0, 0x00000044,
-    0x00000000, 0x1214c000, 0x93090009, 0x00408424, 0x00000000,
-    0x00000000, 0x00000000, 0x0040c000, 0x00000000, 0x00000000,
+    0x11010809, 0x12121212, 0x12121212, 0x1a121212,
+    0x24c00000, 0x00408e14, 0x0a200000, 0x40841209,
+    0x00000000, 0x60c00000, 0x40a43214, 0x00000000,
+};
+uint32_t cloud_1r[CLOUD_H * CLOUD_W] = {
+    0xf7ffffff, 0xf6f6f6f6, 0xf6f6f6f6, 0xfef6f6f6,
+    0x3fffffff, 0x00408f1f, 0x0a200000, 0xffbf1b09,
+    0xffffffff, 0x7fffffff, 0xffbf3b1f, 0xffffffff,
+};
+
+uint32_t digit_0[DIGIT_H * DIGIT_W] = {
+    0x00000a08,
+    0x0000a2a0,
+};
+uint32_t digit_1[DIGIT_H * DIGIT_W] = {
+    0x00001800,
+    0x0000b400,
+};
+uint32_t digit_2[DIGIT_H * DIGIT_W] = {
+    0x00001218,
+    0x00006210,
+};
+uint32_t digit_3[DIGIT_H * DIGIT_W] = {
+    0x00000a10,
+    0x00006290,
+};
+uint32_t digit_4[DIGIT_H * DIGIT_W] = {
+    0x00001800,
+    0x0000f0b0,
+};
+uint32_t digit_5[DIGIT_H * DIGIT_W] = {
+    0x00000a10,
+    0x000052b0,
+};
+uint32_t digit_6[DIGIT_H * DIGIT_W] = {
+    0x00000a08,
+    0x000052a0,
+};
+uint32_t digit_7[DIGIT_H * DIGIT_W] = {
+    0x00000300,
+    0x0000b210,
+};
+uint32_t digit_8[DIGIT_H * DIGIT_W] = {
+    0x00000a08,
+    0x00006220,
+};
+uint32_t digit_9[DIGIT_H * DIGIT_W] = {
+    0x00000a10,
+    0x0000e220,
 };
 
 #endif //GAME_OBJECTS_H
