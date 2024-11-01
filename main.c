@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include "game_objects.h"
+#include <math.h>
 
 
 volatile uint8_t running = 1; // Shared variable to control the loop
@@ -51,6 +52,10 @@ struct game_t {
 
     uint64_t stamp;
 
+    uint64_t dn_new;
+    uint8_t dn_mask;
+    uint64_t day_night;
+
     uint8_t *screen;
     uint32_t *ground;
     uint64_t ground_size;
@@ -61,6 +66,12 @@ struct game_t {
         int32_t e_y;
     } enemies[ENEMY_COUNT];
 
+    struct cloud_st {
+        uint8_t c_type;
+        double_t c_x;
+        int32_t c_y;
+        double_t c_speed;
+    } clouds[CLOUD_COUNT];
 
 } game;
 
@@ -97,7 +108,7 @@ void print_dina() {
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
         for (int x = 0; x < w.ws_col; ++x) {
-            wprintf(L"%lc", 0x2800 | (0x00 ^ screen_raw[x]));
+            wprintf(L"%lc", 0x2800 | (game.dn_mask ^ screen_raw[x]));
         }
         wprintf(L"\n");
     }
@@ -127,6 +138,12 @@ void keyboard_handler() {
     if (game.state != state_running && (space || crouch)) {
         game.state = state_running;
         game.time_start = get_time();
+
+        const int32_t center_x = game.weight - 1;
+        const int32_t center_y = game.height - 1;
+        game.day_night = (uint64_t) ((double) get_time() - sqrt(center_x * center_x + center_y * center_y) * 4);
+        game.dn_new = 0;
+        game.dn_mask = 0xFF;
         for (int e = 0; e < ENEMY_COUNT; ++e)
             game.enemies[e].e_type = 0;
     }
@@ -164,7 +181,7 @@ void draw_ground() {
         for (int y = 0; y < GROUND_H; ++y) {
             uint32_t *_ground_raw = &game.ground[y * size];
             for (int x = 0; x < size; ++x) {
-                _ground_raw[x] = ground[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];
+                _ground_raw[x] = ground_1[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];  // NOLINT(*-msc50-cpp)
             }
         }
     }
@@ -177,7 +194,7 @@ void draw_ground() {
         for (int x = 0; x < size * 4 && x < game.weight; ++x) {
             screen_raw[x] |= ground_raw[(x + game.x) % (size * 4)];
         }
-        _ground_raw[(size - 1 + game.x / 4) % size] = ground[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];
+        _ground_raw[(size - 1 + game.x / 4) % size] = ground_1[y][(rand() & 0x07) == 0x07 ? rand() & 1 : 2];  // NOLINT(*-msc50-cpp)
     }
     game.x = (int32_t) ((game.x + game.speed) % (size * 4));
 }
@@ -189,7 +206,7 @@ void draw_player() {
         else tile_dino = game.score & 2 ? run_1 : run_2;
         if (game.crouch) tile_back = game.score & 2 ? down_1_r : down_2_r;
         else tile_back = game.score & 2 ? run_1_r : run_2_r;
-    } else tile_dino = death;
+    } else tile_dino = death_1;
 
     if (tile_back != NULL) {
         for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
@@ -226,21 +243,19 @@ uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
     }
 }
 void draw_enemy() {
-
-    int32_t x = 0;
+    int32_t mx = 0;
     for (int e = 0; e < ENEMY_COUNT; ++e)
-        if (x < game.enemies[e].e_x) x = game.enemies[e].e_x;
-
+        if (mx < game.enemies[e].e_x) mx = game.enemies[e].e_x;
 
     for (int e = 0; e < ENEMY_COUNT; ++e) {
         struct enemy_st *enemy = &game.enemies[e];
         if (enemy->e_type == 0) {
-            const int32_t min_distance = game.speed * (ENEMY_MIN_DISTANCE + rand() % 10);
-            enemy->e_type = rand() % ENEMY_TYPES + 1;
+            const int32_t min_distance = game.speed * (ENEMY_MIN_DISTANCE + rand() % 10); // NOLINT(*-narrowing-conversions, *-msc50-cpp)
+            enemy->e_type = rand() % ENEMY_TYPES + 1;  // NOLINT(*-msc50-cpp)
             enemy->e_x = game.weight;
-            if (enemy->e_x < min_distance + x) enemy->e_x = min_distance + x;
-            if (x < enemy->e_x) x = enemy->e_x;
-            enemy->e_y = (rand() & 1) && enemy->e_type == pterodactyl_type ? 4 : 0;
+            if (enemy->e_x < min_distance + mx) enemy->e_x = min_distance + mx;
+            if (mx < enemy->e_x) mx = enemy->e_x;
+            enemy->e_y = rand() & 1 && enemy->e_type == pterodactyl_type ? 4 : 0; // NOLINT(*-msc50-cpp)
         }
 
         uint32_t *enemy_tile = get_enemy(enemy->e_type, game.score & 2);
@@ -279,7 +294,63 @@ void cheak_death() {
     }
 }
 void draw_sky() {
+    uint32_t day_night = (get_time() - game.day_night) / 4;
+    if (day_night > 10 * 1000) {
+        game.day_night = get_time();
+        game.dn_new = 1;
+        day_night = 0;
+    }
 
+    const int32_t center_x = game.weight - 1;
+    const int32_t center_y = game.height - 1;
+
+    if (sqrt(center_x * center_x + center_y * center_y) < day_night) {
+        if (game.dn_new) game.dn_mask ^= 0xFF;
+        game.dn_new = 0;
+        return;
+    }
+
+    for (int32_t y = center_y; y >= 0; --y) {
+        const int32_t dy = (center_y - y) * (center_y - y);
+        uint8_t *screen_raw = game.screen + y * game.weight;
+        for (int32_t x = center_x; x >= 0; --x) {
+            if (sqrt((center_x - x) * (center_x - x) + dy) > day_night) break;
+            screen_raw[x] ^= 0xFF;
+        }
+    }
+}
+
+void draw_clouds() {
+    double_t mx = 0;
+    for (int e = 0; e < CLOUD_COUNT; ++e)
+        if (mx < game.clouds[e].c_x) mx = game.clouds[e].c_x;
+
+    for (int e = 0; e < CLOUD_COUNT; ++e) {
+        struct cloud_st *cloud = &game.clouds[e];
+        if (cloud->c_type == 0) {
+            const int32_t min_distance = game.speed * (CLOUD_MIN_DISTANCE + rand() % 10); // NOLINT(*-narrowing-conversions, *-msc50-cpp)
+            cloud->c_type = 1;
+            cloud->c_x = (float_t) game.weight;
+            if (cloud->c_x < (float_t) min_distance + mx) cloud->c_x = (float_t) min_distance + mx;
+            if (mx < cloud->c_x) mx = cloud->c_x;
+            cloud->c_y = 10 + rand() % (game.height - CLOUD_H - 10); // NOLINT(*-msc50-cpp)
+            cloud->c_speed = 0.1 + (float_t) (rand() % 2) + (float_t) (rand() % 10) / 10.0; // NOLINT(*-msc50-cpp)
+        }
+
+        uint8_t ok = 1;
+        for (int y = 0; y < CLOUD_H && y + 1 + cloud->c_y < game.height; ++y) {
+            const uint8_t *cloud_raw = (uint8_t *) (cloud_1 + y * CLOUD_W);
+            uint8_t *screen_raw = game.screen + (y + cloud->c_y + 1) * game.weight;
+            for (int32_t x = 0; x < CLOUD_W * 4; x += 1) {
+                if (x + (int32_t)cloud->c_x < 0) continue;
+                ok = 0;
+                if (x + (int32_t) cloud->c_x >= w.ws_col) continue;
+                screen_raw[x + (int32_t)cloud->c_x] |= cloud_raw[x];
+            }
+        }
+        cloud->c_x -= cloud->c_speed;
+        if (ok) cloud->c_type = 0;
+    }
 }
 
 void update_console_events() {
@@ -301,6 +372,7 @@ void update_console_events() {
     draw_enemy();
     cheak_death();
     draw_ground();
+    draw_clouds();
     draw_player();
     draw_sky();
 }
@@ -316,7 +388,7 @@ void drawing_thread() {
 
 int main() {
     setlocale(LC_CTYPE, "");
-    wprintf(L"\e[?25l");
+    // wprintf(L"\e[?25l");
     pthread_t input_tid;
     pthread_mutex_init(&key_mutex, NULL);
 

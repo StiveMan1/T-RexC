@@ -16,7 +16,11 @@
 #define ENEMY_TYPES 5
 #define ENEMY_MIN_DISTANCE 15
 
-uint32_t idle[DINO_H * DINO_W] = {
+#define CLOUD_COUNT 5
+#define CLOUD_MIN_DISTANCE 5
+
+
+uint32_t idle_1[DINO_H * DINO_W] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,
     0x00000000, 0xffff3b08, 0x00037fff, 0x00000000,
     0x00000000, 0xfff4e6ff, 0x19ffffff, 0x00000000,
@@ -56,7 +60,7 @@ uint32_t run_2_r[DINO_H * DINO_W] = {
     0xffffffff, 0xffffffff, 0xfffeff47, 0xffffffff,
     0xffffffff, 0xc0c0c0c0, 0xc0c08040, 0xffff40c0,
 };
-uint32_t death[DINO_H * DINO_W] = {
+uint32_t death_1[DINO_H * DINO_W] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,
     0x00000000, 0xffff3b08, 0x00037fff, 0x00000000,
     0x00000000, 0xfff4e6ff, 0x19ffffff, 0x00000000,
@@ -138,16 +142,15 @@ uint32_t cactus_4[ENEMY_H * ENEMY_W] = {
     0x80f7b000, 0x00f7b0c0, 0x46fe4080, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
-uint32_t ground[GROUND_H][GROUND_W] = {
+uint32_t ground_1[GROUND_H][GROUND_W] = {
     0x00021200, 0x00042400, 0x00000000,
     0x00021200, 0x00042400, 0x00000000,
     0xc0c0c0c0, 0x84221224, 0xc0c0c0c0,
 };
-uint32_t cloud[CLOUD_H * CLOUD_W] = {
+uint32_t cloud_1[CLOUD_H * CLOUD_W] = {
     0x2a340420, 0xc0d2c8c9, 0xc1c0c0c0, 0xd2c8c0c0, 0x00000044,
     0x00000000, 0x1214c000, 0x93090009, 0x00408424, 0x00000000,
     0x00000000, 0x00000000, 0x0040c000, 0x00000000, 0x00000000,
 };
-uint32_t *tile = idle;
 
 #endif //GAME_OBJECTS_H
