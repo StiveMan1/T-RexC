@@ -55,11 +55,15 @@ struct game_t {
     uint32_t *ground;
     uint64_t ground_size;
 
+    struct enemy_st {
+        enemy_type e_type;
+        int32_t e_x;
+        int32_t e_y;
+    } enemies[2];
 
-    enemy_type e_type;
-    int32_t e_x;
-    int32_t e_y;
+
 } game;
+
 
 // Input thread to capture key presses
 void *input_thread(void *_) {
@@ -93,7 +97,7 @@ void print_dina() {
     for (int y = game.height - 1; y >= 0; --y) {
         const uint8_t *screen_raw = game.screen + y * game.weight;
         for (int x = 0; x < w.ws_col; ++x) {
-            wprintf(L"%lc", 0x2800 | screen_raw[x]);
+            wprintf(L"%lc", 0x2800 | (0xFF ^ screen_raw[x]));
         }
         wprintf(L"\n");
     }
@@ -116,12 +120,15 @@ void keyboard_handler() {
         case 66:
             crouch = 1;
         break;
+        case 114:
+            game.state = state_start;
         default: ;
     }
     if (game.state != state_running && (space || crouch)) {
         game.state = state_running;
         game.time_start = get_time();
-        game.e_type = 0;
+        for (int e = 0; e < ENEMY_COUNT; ++e)
+            game.enemies[e].e_type = 0;
     }
     game.space = space;
     game.crouch = crouch;
@@ -219,32 +226,34 @@ uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
     }
 }
 void draw_enemy() {
-    if (game.state == state_start) return;
-    if (game.e_type == 0) {
-        // TODO random enemy;
-        game.e_type = rand() % ENEMY_TYPES + 1;
-        game.e_x = game.weight;
-        game.e_y = (rand() & 1) && game.e_type == pterodactyl_type ? 4 : 0;
-    }
-
-    uint32_t *enemy_tile = get_enemy(game.e_type, game.score & 2);
-    if (enemy_tile == NULL) return;
-
-    uint8_t ok = 1;
-    for (int y = 0; y < ENEMY_H && y + 1 + game.e_y < game.height; ++y) {
-        const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
-        uint8_t *screen_raw = game.screen + (y + game.e_y + 1) * game.weight;
-        for (int x = 0; x < ENEMY_W * 4; ++x) {
-            if (x + game.e_x < 0) continue;
-            ok = 0;
-            if (x + game.e_x >= w.ws_col) continue;
-            screen_raw[x + game.e_x] |= enemy_raw[x];
+    for (int e = 0; e < ENEMY_COUNT; ++e) {
+        struct enemy_st *enemy = &game.enemies[e];
+        if (enemy->e_type == 0) {
+            enemy->e_type = rand() % ENEMY_TYPES + 1;
+            enemy->e_x = game.weight;
+            enemy->e_y = (rand() & 1) && enemy->e_type == pterodactyl_type ? 4 : 0;
         }
+
+        uint32_t *enemy_tile = get_enemy(enemy->e_type, game.score & 2);
+        if (enemy_tile == NULL) return;
+
+        uint8_t ok = 1;
+        for (int y = 0; y < ENEMY_H && y + 1 + enemy->e_y < game.height; ++y) {
+            const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
+            uint8_t *screen_raw = game.screen + (y + enemy->e_y + 1) * game.weight;
+            for (int x = 0; x < ENEMY_W * 4; ++x) {
+                if (x + enemy->e_x < 0) continue;
+                ok = 0;
+                if (x + enemy->e_x >= w.ws_col) continue;
+                screen_raw[x + enemy->e_x] |= enemy_raw[x];
+            }
+        }
+        enemy->e_x -= (int32_t) game.speed;
+        if (ok) enemy->e_type = 0;
     }
-    game.e_x -= (int32_t) game.speed;
-    if (ok) game.e_type = 0;
 }
 void cheak_death() {
+    if (game.state == state_start) return;
     const uint32_t *tile_dino = NULL;
     if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
     else tile_dino = game.score & 2 ? run_1 : run_2;
@@ -260,11 +269,14 @@ void cheak_death() {
         }
     }
 }
+void draw_sky() {
+
+}
 
 void update_console_events() {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
     if (w.ws_col == 0) return;
-    game.height = w.ws_row;
+    game.height = w.ws_row > 25 ? 25 : w.ws_row;
     game.weight = (w.ws_col / 4 + (w.ws_col % 4 != 0)) * 4;
 
     if (game.weight * game.height > game.size) {
@@ -281,6 +293,7 @@ void update_console_events() {
     cheak_death();
     draw_ground();
     draw_player();
+    draw_sky();
 }
 
 // Drawing thread to simulate console drawing

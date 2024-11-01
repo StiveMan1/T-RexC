@@ -9,8 +9,12 @@
 #define ENEMY_W 4
 #define GROUND_H 3
 #define GROUND_W 3
+#define CLOUD_H 3
+#define CLOUD_W 5
 
+#define ENEMY_COUNT 2
 #define ENEMY_TYPES 5
+#define ENEMY_MIN_DISTANCE 10
 
 uint32_t idle[DINO_H * DINO_W] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,
@@ -137,7 +141,12 @@ uint32_t cactus_4[ENEMY_H * ENEMY_W] = {
 uint32_t ground[GROUND_H][GROUND_W] = {
     0x00021200, 0x00042400, 0x00000000,
     0x00021200, 0x00042400, 0x00000000,
-    0x24242424, 0x24221224, 0x24242424,
+    0xc0c0c0c0, 0x84221224, 0xc0c0c0c0,
+};
+uint32_t cloud[CLOUD_H * CLOUD_W] = {
+    0x2a340420, 0xc0d2c8c9, 0xc1c0c0c0, 0xd2c8c0c0, 0x00000044,
+    0x00000000, 0x1214c000, 0x93090009, 0x00408424, 0x00000000,
+    0x00000000, 0x00000000, 0x0040c000, 0x00000000, 0x00000000,
 };
 uint32_t *tile = idle;
 
