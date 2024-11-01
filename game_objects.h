@@ -13,6 +13,8 @@
 #define CLOUD_W 4
 #define DIGIT_H 2
 #define DIGIT_W 1
+#define PHASE_H 3
+#define PHASE_W 2
 
 #define ENEMY_COUNT 2
 #define ENEMY_TYPES 5
@@ -20,6 +22,7 @@
 
 #define CLOUD_COUNT 5
 #define CLOUD_MIN_DISTANCE 5
+#define DAY_LIGHT_TIME 10000
 
 
 uint32_t idle_1[DINO_H * DINO_W] = {
@@ -199,6 +202,41 @@ uint32_t digit_8[DIGIT_H * DIGIT_W] = {
 uint32_t digit_9[DIGIT_H * DIGIT_W] = {
     0x00000a10,
     0x0000e220,
+};
+uint32_t phase_1[PHASE_H * PHASE_W] = {
+    0x00c02718, 0x00000000,
+    0x000000ff, 0x00000000,
+    0x000956a0, 0x00000000,
+};
+uint32_t phase_2[PHASE_H * PHASE_W] = {
+    0x00c43718, 0x00000000,
+    0x000047ff, 0x00000000,
+    0x000b76a0, 0x00000000,
+};
+uint32_t phase_3[PHASE_H * PHASE_W] = {
+    0x00c63f18, 0x00000000,
+    0x0000ffff, 0x00000000,
+    0x000ff6a0, 0x00000000,
+};
+uint32_t phase_4[PHASE_H * PHASE_W] = {
+    0xffff3f18, 0x0000033f,
+    0xffffffff, 0x0000ffff,
+    0xfffff6a0, 0x000044f6,
+};
+uint32_t phase_5[PHASE_H * PHASE_W] = {
+    0xf0000000, 0x0000033f,
+    0x00000000, 0x0000ffff,
+    0x39000000, 0x000044f6,
+};
+uint32_t phase_6[PHASE_H * PHASE_W] = {
+    0xe0000000, 0x0000033e,
+    0x00000000, 0x0000ffb8,
+    0x19000000, 0x000044b6,
+};
+uint32_t phase_7[PHASE_H * PHASE_W] = {
+    0xc0000000, 0x0000033c,
+    0x00000000, 0x0000ff00,
+    0x09000000, 0x000044b2,
 };
 
 #endif //GAME_OBJECTS_H

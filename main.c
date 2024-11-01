@@ -55,6 +55,7 @@ struct game_t {
     uint64_t dn_new;
     uint8_t dn_mask;
     uint64_t day_night;
+    uint8_t moon_phase;
 
     uint8_t *screen;
     uint32_t *ground;
@@ -171,6 +172,12 @@ void player_movement() {
     if (game.y == 0) game.stamp = game.space ? score - 2 : 0;
     game.score = score;
     game.speed = speed;
+
+
+    if ((get_time() - game.day_night) / 4 > DAY_LIGHT_TIME) {
+        game.day_night = get_time();
+        game.dn_new = 1;
+    }
 }
 void draw_ground() {
     const uint64_t size = game.weight / 2 + (game.weight % 2 != 0) + 1;
@@ -264,12 +271,12 @@ void draw_enemy() {
         uint8_t ok = 1;
         for (int y = 0; y < ENEMY_H && y + 1 + enemy->e_y < game.height; ++y) {
             const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
-            uint8_t *screen_raw = game.screen + (y + enemy->e_y + 1) * game.weight;
+            uint8_t *screen_raw = game.screen + (y + enemy->e_y + 1) * game.weight + (int32_t) enemy->e_x;
             for (int x = 0; x < ENEMY_W * 4; ++x) {
                 if (x + enemy->e_x < 0) continue;
                 ok = 0;
                 if (x + enemy->e_x >= w.ws_col) continue;
-                screen_raw[x + (int32_t) enemy->e_x] |= enemy_raw[x];
+                screen_raw[x] |= enemy_raw[x];
             }
         }
         enemy->e_x -= game.speed;
@@ -294,18 +301,14 @@ void cheak_death() {
     }
 }
 void draw_sky() {
-    uint32_t day_night = (get_time() - game.day_night) / 4;
-    if (day_night > 10 * 1000) {
-        game.day_night = get_time();
-        game.dn_new = 1;
-        day_night = 0;
-    }
+    const uint32_t day_night = (get_time() - game.day_night) / 4;
 
     const int32_t center_x = game.weight - 1;
     const int32_t center_y = game.height - 1;
 
     if (sqrt(center_x * center_x + center_y * center_y) < day_night) {
         if (game.dn_new) game.dn_mask ^= 0xFF;
+        if (game.dn_new && !game.dn_mask) game.moon_phase = (game.moon_phase + 1) % 7;
         game.dn_new = 0;
         return;
     }
@@ -340,13 +343,13 @@ void draw_clouds() {
         for (int y = 0; y < CLOUD_H && y + 1 + cloud->c_y < game.height; ++y) {
             const uint8_t *cloud_raw = (uint8_t *) (cloud_1 + y * CLOUD_W);
             const uint8_t *back_raw = (uint8_t *) (cloud_1r + y * CLOUD_W);
-            uint8_t *screen_raw = game.screen + (y + cloud->c_y + 1) * game.weight;
+            uint8_t *screen_raw = game.screen + (y + cloud->c_y + 1) * game.weight + (int32_t)cloud->c_x;
             for (int32_t x = 0; x < CLOUD_W * 4; x += 1) {
                 if (x + (int32_t)cloud->c_x < 0) continue;
                 ok = 0;
                 if (x + (int32_t) cloud->c_x >= w.ws_col) continue;
-                screen_raw[x + (int32_t)cloud->c_x] &= back_raw[x];
-                screen_raw[x + (int32_t)cloud->c_x] |= cloud_raw[x];
+                screen_raw[x] &= back_raw[x];
+                screen_raw[x] |= cloud_raw[x];
             }
         }
         cloud->c_x -= cloud->c_speed;
@@ -382,21 +385,49 @@ void draw_score() {
     if (game.state == state_start) return;
     int32_t score = game.score;
     uint32_t X = game.weight - 4;
-    // printf("Score (%d): ", game.height - DIGIT_H - 1);
     while(score) {
         const uint32_t *tile = get_digit(score % 10);
-        // printf("%d(%d %d %d) ", score % 10, X, w.ws_col, X - DIGIT_W * 4);
-        // printf("%p ", tile);
-        // for (uint32_t y = 0; y < DIGIT_H; ++y) {
-        //     ((uint32_t *)(game.screen + (y + game.height - DIGIT_H - 1) * game.weight))[X - DIGIT_W * 4] = tile[y];
-        // }
-
         for (int y = 0; y < DIGIT_H; ++y) {
             uint16_t *screen_raw = (uint16_t *) (game.screen + (game.height - DIGIT_H + y) * game.weight);
             screen_raw[X / 2] |= tile[y * DIGIT_W];
         }
         X -= DIGIT_W * 2;
         score /= 10;
+    }
+}
+uint32_t *get_phase(const int type) {
+    switch (type) {
+        case 0:
+            return phase_1;
+        case 1:
+            return phase_2;
+        case 2:
+            return phase_3;
+        case 3:
+            return phase_4;
+        case 4:
+            return phase_5;
+        case 5:
+            return phase_6;
+        case 6:
+            return phase_7;
+        default: return phase_4;
+    }
+}
+void draw_sun_moon() {
+    const uint32_t dx = game.weight * (double_t)(get_time() - game.day_night) / DAY_LIGHT_TIME / 4;
+
+    uint32_t *phase = phase_4;
+    if (!game.dn_mask) phase = get_phase(game.moon_phase);
+
+    for (uint32_t y = 0; y < PHASE_H; ++y) {
+        const uint8_t *phase_raw = (uint8_t *) (phase + y * PHASE_W);
+        uint8_t *screen_raw = game.screen + (game.height - PHASE_H + y - 1) * game.weight + (game.weight - dx);
+        for (uint32_t x = 0; x < PHASE_W * 4; ++x) {
+            if (x + (game.weight - dx) < 0) continue;
+            if (x + (game.weight - dx) >= w.ws_col) continue;
+            screen_raw[x] |= phase_raw[x];
+        }
     }
 }
 
@@ -419,6 +450,7 @@ void update_console_events() {
     draw_enemy();
     cheak_death();
     draw_ground();
+    draw_sun_moon();
     draw_clouds();
     draw_player();
     draw_score();
