@@ -39,7 +39,7 @@ Make sure you have a C compiler installed, like `gcc` or `clang`.
 1. Clone the repository:
     ```bash
     git clone https://github.com/StiveMan1/T-RexC.git
-    cd console-trex-game
+    cd T-RexC
     ```
 
 2. Compile the game:
