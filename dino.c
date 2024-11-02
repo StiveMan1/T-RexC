@@ -497,7 +497,7 @@ void update_console_events() {
     draw_enemy();
     
     // Check for player death conditions
-    check_death(); // Corrected function name from 'cheak_death'
+    cheak_death(); // Corrected function name from 'cheak_death'
     
     // Draw the ground on the screen
     draw_ground();

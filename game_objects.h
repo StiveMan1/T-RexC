@@ -1,9 +1,6 @@
 #ifndef GAME_OBJECTS_H
 #define GAME_OBJECTS_H
 
-#ifndef GAME_OBJECTS_H
-#define GAME_OBJECTS_H
-
 #include <stdint.h>
 
 // Define dimensions for various game objects
