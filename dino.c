@@ -492,7 +492,9 @@ void update_console_events() {
 
     // Set game height and width based on terminal size, capping height at 25
     game.height = w.ws_row > 25 ? 25 : w.ws_row;
-    game.weight = (w.ws_col / 4 + (w.ws_col % 4 != 0)) * 4; // Calculate width as a multiple of 4
+    game.weight = w.ws_col < 16 ? 16 : w.ws_col;
+    game.height = game.height < 6 ? 6 : game.height;
+    game.weight = (game.weight / 4 + (game.weight % 4 != 0)) * 4; // Calculate width as a multiple of 4
 
     // Check if the new screen size exceeds the allocated size
     if (game.weight * game.height > game.size) {
