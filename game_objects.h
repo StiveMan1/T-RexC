@@ -1,30 +1,34 @@
 #ifndef GAME_OBJECTS_H
 #define GAME_OBJECTS_H
 
+#ifndef GAME_OBJECTS_H
+#define GAME_OBJECTS_H
+
 #include <stdint.h>
 
-#define DINO_H 6
-#define DINO_W 4
-#define ENEMY_H 5
-#define ENEMY_W 4
-#define GROUND_H 3
-#define GROUND_W 3
-#define CLOUD_H 3
-#define CLOUD_W 4
-#define DIGIT_H 2
-#define DIGIT_W 1
-#define PHASE_H 3
-#define PHASE_W 2
+// Define dimensions for various game objects
+#define DINO_H 6             // Height of the dinosaur sprite
+#define DINO_W 4             // Width of the dinosaur sprite
+#define ENEMY_H 5            // Height of enemy sprites
+#define ENEMY_W 4            // Width of enemy sprites
+#define GROUND_H 3           // Height of ground sprite
+#define GROUND_W 3           // Width of ground sprite
+#define CLOUD_H 3            // Height of cloud sprite
+#define CLOUD_W 4            // Width of cloud sprite
+#define DIGIT_H 2            // Height of digit sprites (for score)
+#define DIGIT_W 1            // Width of digit sprites (for score)
+#define PHASE_H 3            // Height of phase indicator sprites
+#define PHASE_W 2            // Width of phase indicator sprites
 
-#define ENEMY_COUNT 2
-#define ENEMY_TYPES 5
-#define ENEMY_MIN_DISTANCE 8
+// Game constants
+#define ENEMY_COUNT 2        // Maximum number of enemies
+#define ENEMY_TYPES 5        // Number of different enemy types
+#define ENEMY_MIN_DISTANCE 8  // Minimum distance between enemies
+#define CLOUD_COUNT 5        // Number of clouds in the game
+#define CLOUD_MIN_DISTANCE 5  // Minimum distance between clouds
+#define DAY_LIGHT_TIME 10000 // Duration of daylight in milliseconds
 
-#define CLOUD_COUNT 5
-#define CLOUD_MIN_DISTANCE 5
-#define DAY_LIGHT_TIME 10000
-
-
+// Dinosaur sprites in different states represented as bitmaps
 uint32_t idle_1[DINO_H * DINO_W] = {
     0x00000000, 0x4bb80000, 0x0000c708, 0x00000000,
     0x00000000, 0xffff3b08, 0x00037fff, 0x00000000,
@@ -105,6 +109,8 @@ uint32_t down_2_r[DINO_H * DINO_W] = {
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
 };
+
+// Enemy sprites represented as bitmaps
 uint32_t pterodactyl_1[ENEMY_H * ENEMY_W] = {
     0x18000000, 0x00000001, 0x00000000, 0x00000000,
     0xb8000000, 0x09090b7f, 0x00000001, 0x00000000,
@@ -147,11 +153,15 @@ uint32_t cactus_4[ENEMY_H * ENEMY_W] = {
     0x80f7b000, 0x00f7b0c0, 0x46fe4080, 0x00000000,
     0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
+
+// Ground sprites for generator representation as bitmaps
 uint32_t ground_1[GROUND_H][GROUND_W] = {
     0x00021200, 0x00042400, 0x00000000,
     0x00021200, 0x00042400, 0x00000000,
     0xc0c0c0c0, 0x84221224, 0xc0c0c0c0,
 };
+
+// Cloud representation as bitmaps
 uint32_t cloud_1[CLOUD_H * CLOUD_W] = {
     0x11010809, 0x12121212, 0x12121212, 0x1a121212,
     0x24c00000, 0x00408e14, 0x0a200000, 0x40841209,
@@ -163,6 +173,7 @@ uint32_t cloud_1r[CLOUD_H * CLOUD_W] = {
     0xffffffff, 0x7fffffff, 0xffbf3b1f, 0xffffffff,
 };
 
+// Digit representations for score display (0-9)
 uint32_t digit_0[DIGIT_H * DIGIT_W] = {
     0x00000a08,
     0x0000a2a0,
@@ -203,6 +214,8 @@ uint32_t digit_9[DIGIT_H * DIGIT_W] = {
     0x00000a10,
     0x0000e220,
 };
+
+// Moon/Sun Phase indicator representations
 uint32_t phase_1[PHASE_H * PHASE_W] = {
     0x00c02718, 0x00000000,
     0x000000ff, 0x00000000,
