@@ -192,6 +192,7 @@ void player_movement() {
     const uint64_t score = (get_time() - game.time_start) / 50;
     double_t speed = 3.0 + (double_t) score / 300.0;
     if (speed > 7) speed = 7;
+
     if (game.state == state_start) speed = 3;
     if (game.state == state_death) {
         game.score = 0;
@@ -209,15 +210,11 @@ void player_movement() {
     if (game.y == 0) game.stamp = game.space ? score - 2 : 0;
     game.score = score;
     game.speed = speed;
-
-    if ((get_time() - game.day_night) / 4 > DAY_LIGHT_TIME) {
-        game.day_night = get_time();
-        game.dn_new = 1;
-    }
 }
 
-void drawing_back(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint32_t *background) {
-    if (x > game.weight || y > game.height) return;
+void drawing_back(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t *background) {
+    if (x >= game.weight || y >= game.height) return;
+    // if (x + w < 0 || y + h < 0) return;
     int p_x = 0;
     if (x < 0) {
         p_x = -x;
@@ -246,8 +243,9 @@ void drawing_back(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint32_t *
             screen_raw[_x] &= object_raw[_x];
     }
 }
-inline void drawing_objects(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint32_t *object) {
-    if (x > game.weight || y > game.height) return;
+void drawing_objects(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t *object) {
+    if (x >= game.weight || y >= game.height) return;
+    if (w * 4 + x < 0 || h * 4 + y < 0) return;
     int p_x = 0;
     if (x < 0) {
         p_x = -x;
@@ -477,6 +475,10 @@ uint32_t *get_phase(const int type) {
     }
 }
 void draw_sun_moon() {
+    if ((get_time() - game.day_night) / 4 > DAY_LIGHT_TIME) {
+        game.day_night = get_time();
+        game.dn_new = 1;
+    }
     const uint32_t dx = game.weight * (double_t)(get_time() - game.day_night) / DAY_LIGHT_TIME / 4;
 
     const uint32_t *phase = phase_4;
@@ -494,7 +496,6 @@ void update_console_events() {
     game.height = w.ws_row > 25 ? 25 : w.ws_row;
     game.weight = w.ws_col < 16 ? 16 : w.ws_col;
     game.height = game.height < 6 ? 6 : game.height;
-    game.weight = (game.weight / 4 + (game.weight % 4 != 0)) * 4; // Calculate width as a multiple of 4
 
     // Check if the new screen size exceeds the allocated size
     if (game.weight * game.height > game.size) {

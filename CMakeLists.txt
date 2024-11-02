@@ -3,8 +3,10 @@ project(T_RexC C)
 
 set(CMAKE_C_STANDARD 11)
 
-include_directories(.)
+include_directories()
 
 add_executable(T_RexC
     dino.c
     game_objects.h)
+
+target_link_libraries(T_RexC m)
