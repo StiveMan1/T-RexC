@@ -12,8 +12,8 @@
  *
  * Controls:
  * - Space/Enter/Arrow Up: Jump
- * - B: Crouch
- * - R: Restart after game over
+ * - Arrow Down: Crouch
+ * - R: Restart after game over in spectator
  *
  * Program Structure:
  * - Input Handling: A thread to capture user key presses in non-canonical mode.
