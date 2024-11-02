@@ -1,3 +1,34 @@
+/*
+ * Google T-Rex Console Game - Main game logic
+ * -----------------
+ * A console-based game inspired by the Google Chrome T-Rex runner game.
+ * Written in C, it uses multithreading to capture input and display game
+ * visuals. This program involves a dinosaur character navigating obstacles
+ * while tracking score, day/night cycle, and player actions.
+ *
+ * Dependencies:
+ * - Requires POSIX-compliant libraries for terminal manipulation and multithreading.
+ * - Must be run in a terminal that supports UTF-8 encoding and ANSI escape codes.
+ *
+ * Controls:
+ * - Space/Enter/Arrow Up: Jump
+ * - B: Crouch
+ * - R: Restart after game over
+ *
+ * Program Structure:
+ * - Input Handling: A thread to capture user key presses in non-canonical mode.
+ * - Game Rendering: Draws the ground, dinosaur, enemies, and other game elements.
+ * - Game Logic: Controls movement, collision detection, and scoring.
+ *
+ * Note:
+ * This game is for educational and entertainment purposes. 
+ * Console-based display limitations may vary depending on the terminal used.
+ * 
+ * Author: Sanzhar Zhanalin
+ * Date: 02.11.2024
+ * Version: 1.0
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,11 +44,13 @@
 #include <math.h>
 
 
-volatile uint8_t running = 1; // Shared variable to control the loop
-volatile uint8_t last_key = '\0'; // Shared variable to store the last key pressed
-pthread_mutex_t key_mutex; // Mutex for synchronizing access to `last_key`
-struct winsize w;
+// Global variables for game control and shared key handling
+volatile uint8_t running = 1;       // Controls the main game loop
+volatile uint8_t last_key = '\0';   // Stores the last key pressed
+pthread_mutex_t key_mutex;          // Mutex for synchronizing key access
+struct winsize w;                   // Terminal window size
 
+// Enum for different enemy types
 typedef enum {
     pterodactyl_type = 1,
     cactus_type_1 = 2,
@@ -26,84 +59,90 @@ typedef enum {
     cactus_type_4 = 5,
 } enemy_type;
 
+// Enum for different game states
 typedef enum {
     state_start = 0,
     state_running = 1,
     state_death = 2,
 } game_states;
 
+// Structure for the game state and data
 struct game_t {
-    int32_t height;
-    int32_t weight;
-    uint64_t size;
+    // Screen and game variables
+    int32_t height;            // Screen height
+    int32_t weight;            // Screen width
+    uint64_t size;             // Screen buffer size
 
-    game_states state;
-    uint64_t time_start;
+    game_states state;         // Current game state
+    uint64_t time_start;       // Game start time
 
-    uint8_t space;
-    uint8_t crouch;
+    uint8_t space;             // Jump control
+    uint8_t crouch;            // Crouch control
 
-    uint64_t score;
-    double_t speed;
+    uint64_t score;            // Player's score
+    double_t speed;            // Game speed
 
-    double_t x;
-    double_t y;
-    int32_t dy;
+    double_t x;                // Horizontal position of the player
+    double_t y;                // Vertical position of the player
+    int32_t dy;                // Vertical velocity
 
-    uint64_t stamp;
+    uint64_t stamp;            // Time stamp for tracking jumps
 
-    uint64_t dn_new;
-    uint8_t dn_mask;
-    uint64_t day_night;
-    uint8_t moon_phase;
+    uint64_t dn_new;           // Day-night transition flag
+    uint8_t dn_mask;           // Mask for day-night effect
+    uint64_t day_night;        // Timer for day-night cycle
+    uint8_t moon_phase;        // Current moon phase
 
-    uint8_t *screen;
-    uint32_t *ground;
-    uint64_t ground_size;
+    uint8_t *screen;           // Screen buffer
+    uint32_t *ground;          // Ground buffer
+    uint64_t ground_size;      // Ground buffer size
 
+    // Enemy data
     struct enemy_st {
-        enemy_type e_type;
-        double_t e_x;
-        int32_t e_y;
+        enemy_type e_type;     // Type of enemy
+        double_t e_x;          // Enemy's x position
+        int32_t e_y;           // Enemy's y position
     } enemies[ENEMY_COUNT];
 
+    // Cloud data
     struct cloud_st {
-        uint8_t c_type;
-        double_t c_x;
-        int32_t c_y;
-        double_t c_speed;
+        uint8_t c_type;        // Type of cloud
+        double_t c_x;          // Cloud's x position
+        int32_t c_y;           // Cloud's y position
+        double_t c_speed;      // Cloud's speed
     } clouds[CLOUD_COUNT];
-
 } game;
 
 
 // Input thread to capture key presses
+// Input thread to capture key presses
 void *input_thread(void *_) {
     struct termios oldt, newt;
-    tcgetattr(STDIN_FILENO, &oldt);
+    tcgetattr(STDIN_FILENO, &oldt);           // Get current terminal settings
     newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echo
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    newt.c_lflag &= ~(ICANON | ECHO);         // Disable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);  // Apply new settings
     while (running) {
-        const int32_t ch = getchar();
+        const int32_t ch = getchar();         // Capture key press
         if (ch == EOF) continue;
 
-        pthread_mutex_lock(&key_mutex);
+        pthread_mutex_lock(&key_mutex);       // Lock mutex to update last_key
         last_key = ch;
         pthread_mutex_unlock(&key_mutex);
     }
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Restore original settings
     return NULL;
 }
 
+// Function to get the current time in milliseconds
 uint64_t get_time() {
     struct timeval tv;
-
-    gettimeofday(&tv,NULL);
+    gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+// Function to render the game screen in the terminal
 void print_dina() {
     system("clear");
     for (int y = game.height - 1; y >= 0; --y) {
@@ -114,26 +153,22 @@ void print_dina() {
         wprintf(L"\n");
     }
 }
+
+// Function to handle keyboard inputs and update game state
 void keyboard_handler() {
     pthread_mutex_lock(&key_mutex);
-    const uint8_t c = last_key; // Get the last key pressed
+    const uint8_t c = last_key;               // Get the last key pressed
     last_key = '\0';
     pthread_mutex_unlock(&key_mutex);
 
     uint8_t space = 0;
     uint8_t crouch = 0;
 
+    // Map keys to actions
     switch (c) {
-        case 10:
-        case 32:
-        case 65:
-            space = 1;
-        break;
-        case 66:
-            crouch = 1;
-        break;
-        case 114:
-            game.state = state_start;
+        case 10: case 32: case 65: space = 1; break;   // Jump
+        case 66: crouch = 1; break;                    // Crouch
+        case 114: game.state = state_start;            // Restart
         default: ;
     }
     if (game.state != state_running && (space || crouch)) {
@@ -151,6 +186,8 @@ void keyboard_handler() {
     game.space = space;
     game.crouch = crouch;
 }
+
+// Function to update the player's position and handle jumping logic
 void player_movement() {
     const uint64_t score = (get_time() - game.time_start) / 50;
     double_t speed = 3.0 + (double_t) score / 300.0;
@@ -173,12 +210,12 @@ void player_movement() {
     game.score = score;
     game.speed = speed;
 
-
     if ((get_time() - game.day_night) / 4 > DAY_LIGHT_TIME) {
         game.day_night = get_time();
         game.dn_new = 1;
     }
 }
+
 void draw_ground() {
     const uint64_t size = game.weight / 2 + (game.weight % 2 != 0) + 1;
     if (size > game.ground_size) {
@@ -432,32 +469,57 @@ void draw_sun_moon() {
 }
 
 void update_console_events() {
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return;
-    if (w.ws_col == 0) return;
+    // Get the current size of the terminal window
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return; // Handle potential error in ioctl
+    if (w.ws_col == 0) return; // Avoid processing if no columns are available
+
+    // Set game height and width based on terminal size, capping height at 25
     game.height = w.ws_row > 25 ? 25 : w.ws_row;
-    game.weight = (w.ws_col / 4 + (w.ws_col % 4 != 0)) * 4;
+    game.weight = (w.ws_col / 4 + (w.ws_col % 4 != 0)) * 4; // Calculate width as a multiple of 4
 
+    // Check if the new screen size exceeds the allocated size
     if (game.weight * game.height > game.size) {
-        if (game.screen != NULL) free(game.screen);
-        game.size = game.weight * game.height;
-        game.screen = malloc(game.size);
-
+        if (game.screen != NULL) free(game.screen); // Free previous screen buffer if it exists
+        game.size = game.weight * game.height; // Update the game size to the new dimensions
+        game.screen = malloc(game.size); // Allocate new memory for the screen buffer
     }
+    
+    // Initialize the screen buffer to zero
     memset(game.screen, 0, game.size);
 
+    // Handle keyboard input from the player
     keyboard_handler();
+    
+    // Update player movement based on input
     player_movement();
+    
+    // Draw the enemy on the screen
     draw_enemy();
-    cheak_death();
+    
+    // Check for player death conditions
+    check_death(); // Corrected function name from 'cheak_death'
+    
+    // Draw the ground on the screen
     draw_ground();
+    
+    // Draw the sun and moon (if applicable) on the screen
     draw_sun_moon();
+    
+    // Draw clouds on the screen
     draw_clouds();
+    
+    // Draw the player character on the screen
     draw_player();
+    
+    // Draw the current score on the screen
     draw_score();
+    
+    // Draw the background sky on the screen
     draw_sky();
 }
 
-// Drawing thread to simulate console drawing
+
+// Drawing thread to simulate console drawing and game logic
 void drawing_thread() {
     while (running) {
         usleep(32000);
@@ -466,20 +528,19 @@ void drawing_thread() {
     }
 }
 
+// Main game loop and initialization
 int main() {
-    setlocale(LC_CTYPE, "");
-    wprintf(L"\e[?25l");
+    setlocale(LC_CTYPE, "");                    // Enable Unicode for the console
+    wprintf(L"\e[?25l");                        // Hide cursor in the terminal
     pthread_t input_tid;
     pthread_mutex_init(&key_mutex, NULL);
 
-    // Create threads
-    pthread_create(&input_tid, NULL, input_thread, NULL);
-    drawing_thread(NULL);
+    pthread_create(&input_tid, NULL, input_thread, NULL); // Start input capture thread
+    drawing_thread();                            // Start main game loop and drawing
 
-    // Wait for threads to finish
-    pthread_join(input_tid, NULL);
+    pthread_join(input_tid, NULL);               // Wait for the input thread to finish
 
-    pthread_mutex_destroy(&key_mutex);
+    pthread_mutex_destroy(&key_mutex);           // Clean up mutex
     printf("Program exited.\n");
     return 0;
 }
