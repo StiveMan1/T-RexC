@@ -216,6 +216,68 @@ void player_movement() {
     }
 }
 
+void drawing_back(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint32_t *background) {
+    if (x > game.weight || y > game.height) return;
+    int p_x = 0;
+    if (x < 0) {
+        p_x = -x;
+        x = 0;
+    }
+    register uint32_t d_y = game.height - y;
+    register uint32_t d_x = game.weight - x;
+    if (d_y > h) d_y = h;
+    if (d_x > w * 4) d_x = w * 4;
+    d_x -= p_x;
+
+    const register uint32_t byx = d_x >> 2;
+    const register uint32_t bix = byx << 2;
+    d_x &= 3;
+    for (register uint32_t _y = 0; _y < d_y; ++_y) {
+        uint8_t *screen_raw = game.screen + (_y + y) * game.weight + x;
+        const uint8_t *object_raw = (uint8_t *)(background + _y * w) + p_x;
+
+        for (register uint32_t _x = 0; _x < byx; ++_x)
+            ((uint32_t *)screen_raw)[_x] &= ((uint32_t *)object_raw)[_x];
+
+        if (!d_x) continue;
+        screen_raw += bix;
+        object_raw += bix;
+        for (register uint32_t _x = 0; _x < d_x; ++_x)
+            screen_raw[_x] &= object_raw[_x];
+    }
+}
+inline void drawing_objects(int32_t x, int32_t y, uint32_t w, uint32_t h, const uint32_t *object) {
+    if (x > game.weight || y > game.height) return;
+    int p_x = 0;
+    if (x < 0) {
+        p_x = -x;
+        x = 0;
+    }
+    register uint32_t d_y = game.height - y;
+    register uint32_t d_x = game.weight - x;
+    if (d_y > h) d_y = h;
+    if (d_x > w * 4) d_x = w * 4;
+    d_x -= p_x;
+
+    const register uint32_t byx = d_x >> 2;
+    const register uint32_t bix = byx << 2;
+    d_x &= 3;
+    for (register uint32_t _y = 0; _y < d_y; ++_y) {
+        uint8_t *screen_raw = game.screen + (_y + y) * game.weight + x;
+        const uint8_t *object_raw = (uint8_t *)(object + _y * w) + p_x;
+
+        for (register uint32_t _x = 0; _x < byx; ++_x)
+            ((uint32_t *)screen_raw)[_x] |= ((uint32_t *)object_raw)[_x];
+
+        if (!d_x) continue;
+        screen_raw += bix;
+        object_raw += bix;
+        for (register uint32_t _x = 0; _x < d_x; ++_x)
+            screen_raw[_x] |= object_raw[_x];
+    }
+}
+
+
 void draw_ground() {
     const uint64_t size = game.weight / 2 + (game.weight % 2 != 0) + 1;
     if (size > game.ground_size) {
@@ -252,23 +314,8 @@ void draw_player() {
         else tile_back = game.score & 2 ? run_1_r : run_2_r;
     } else tile_dino = death_1;
 
-    if (tile_back != NULL) {
-        for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
-            const uint32_t *back_raw = &tile_back[y * DINO_W];
-            uint32_t *screen_raw = (uint32_t *) (game.screen + (uint32_t)(y + game.y + 1) * game.weight);
-            for (int x = 0; x < DINO_W; ++x) {
-                screen_raw[x] &= back_raw[x];
-            }
-        }
-    }
-
-    for (int y = 0; y < DINO_H && y + 1 + game.y < game.height; ++y) {
-        const uint32_t *dino_raw = &tile_dino[y * DINO_W];
-        uint32_t *screen_raw = (uint32_t *) (game.screen + (uint32_t)(y + game.y + 1) * game.weight);
-        for (int x = 0; x < DINO_W; ++x) {
-            screen_raw[x] |= dino_raw[x];
-        }
-    }
+    if (tile_back != NULL) drawing_back(0, 1 + game.y, DINO_W, DINO_H, tile_back);
+    drawing_objects(0, 1 + game.y, DINO_W, DINO_H, tile_dino);
 
 }
 uint32_t *get_enemy(const enemy_type type, const uint64_t step) {
@@ -299,28 +346,18 @@ void draw_enemy() {
             enemy->e_x = game.weight;
             if (enemy->e_x < min_distance + mx) enemy->e_x = min_distance + mx;
             if (mx < enemy->e_x) mx = enemy->e_x;
-            enemy->e_y = rand() & 1 && enemy->e_type == pterodactyl_type ? 4 : 0; // NOLINT(*-msc50-cpp)
+            enemy->e_y = rand() & 1 && enemy->e_type == pterodactyl_type ? 5 : 1; // NOLINT(*-msc50-cpp)
         }
 
-        uint32_t *enemy_tile = get_enemy(enemy->e_type, game.score & 2);
+        const uint32_t *enemy_tile = get_enemy(enemy->e_type, game.score & 2);
         if (enemy_tile == NULL) return;
 
-        uint8_t ok = 1;
-        for (int y = 0; y < ENEMY_H && y + 1 + enemy->e_y < game.height; ++y) {
-            const uint8_t *enemy_raw = (uint8_t *) (enemy_tile + y * ENEMY_W);
-            uint8_t *screen_raw = game.screen + (y + enemy->e_y + 1) * game.weight + (int32_t) enemy->e_x;
-            for (int x = 0; x < ENEMY_W * 4; ++x) {
-                if (x + enemy->e_x < 0) continue;
-                ok = 0;
-                if (x + enemy->e_x >= w.ws_col) continue;
-                screen_raw[x] |= enemy_raw[x];
-            }
-        }
+        drawing_objects(enemy->e_x, enemy->e_y, ENEMY_W, ENEMY_H, enemy_tile);
         enemy->e_x -= game.speed;
-        if (ok) enemy->e_type = 0;
+        if (enemy->e_x + ENEMY_W < 0) enemy->e_type = 0;
     }
 }
-void cheak_death() {
+void check_death() {
     if (game.state == state_start) return;
     const uint32_t *tile_dino = NULL;
     if (game.crouch) tile_dino = game.score & 2 ? down_1 : down_2;
@@ -375,22 +412,10 @@ void draw_clouds() {
             cloud->c_y = 10 + rand() % (game.height - CLOUD_H - 10); // NOLINT(*-msc50-cpp)
             cloud->c_speed = 0.1 + rand() % 15 / 10.0; // NOLINT(*-msc50-cpp)
         }
-
-        uint8_t ok = 1;
-        for (int y = 0; y < CLOUD_H && y + 1 + cloud->c_y < game.height; ++y) {
-            const uint8_t *cloud_raw = (uint8_t *) (cloud_1 + y * CLOUD_W);
-            const uint8_t *back_raw = (uint8_t *) (cloud_1r + y * CLOUD_W);
-            uint8_t *screen_raw = game.screen + (y + cloud->c_y + 1) * game.weight + (int32_t)cloud->c_x;
-            for (int32_t x = 0; x < CLOUD_W * 4; x += 1) {
-                if (x + (int32_t)cloud->c_x < 0) continue;
-                ok = 0;
-                if (x + (int32_t) cloud->c_x >= w.ws_col) continue;
-                screen_raw[x] &= back_raw[x];
-                screen_raw[x] |= cloud_raw[x];
-            }
-        }
+        drawing_back(cloud->c_x, cloud->c_y, CLOUD_W, CLOUD_H, cloud_1r);
+        drawing_objects(cloud->c_x, cloud->c_y, CLOUD_W, CLOUD_H, cloud_1);
         cloud->c_x -= cloud->c_speed;
-        if (ok) cloud->c_type = 0;
+        if (cloud->c_x + CLOUD_W * 4 < 1) cloud->c_type = 0;
     }
 }
 uint32_t *get_digit(const int type) {
@@ -454,18 +479,10 @@ uint32_t *get_phase(const int type) {
 void draw_sun_moon() {
     const uint32_t dx = game.weight * (double_t)(get_time() - game.day_night) / DAY_LIGHT_TIME / 4;
 
-    uint32_t *phase = phase_4;
+    const uint32_t *phase = phase_4;
     if (!game.dn_mask) phase = get_phase(game.moon_phase);
 
-    for (uint32_t y = 0; y < PHASE_H; ++y) {
-        const uint8_t *phase_raw = (uint8_t *) (phase + y * PHASE_W);
-        uint8_t *screen_raw = game.screen + (game.height - PHASE_H + y - 1) * game.weight + (game.weight - dx);
-        for (uint32_t x = 0; x < PHASE_W * 4; ++x) {
-            if (x + (game.weight - dx) < 0) continue;
-            if (x + (game.weight - dx) >= w.ws_col) continue;
-            screen_raw[x] |= phase_raw[x];
-        }
-    }
+    drawing_objects(game.weight - dx, game.height - PHASE_H - 2, PHASE_W, PHASE_H, phase);
 }
 
 void update_console_events() {
@@ -497,7 +514,7 @@ void update_console_events() {
     draw_enemy();
     
     // Check for player death conditions
-    cheak_death(); // Corrected function name from 'cheak_death'
+    check_death();
     
     // Draw the ground on the screen
     draw_ground();
