@@ -86,7 +86,8 @@ struct game_t {
     double_t y;                // Vertical position of the player
     int32_t dy;                // Vertical velocity
 
-    uint64_t stamp;            // Time stamp for tracking jumps
+    uint64_t jump_stamp;       // Time jump_stamp for tracking jumps
+    uint64_t crouch_stamp;     // Time jump_stamp for tracking crouchs
 
     uint64_t dn_new;           // Day-night transition flag
     uint8_t dn_mask;           // Mask for day-night effect
@@ -190,7 +191,7 @@ void keyboard_handler() {
 // Function to update the player's position and handle jumping logic
 void player_movement() {
     const uint64_t score = (get_time() - game.time_start) / 50;
-    double_t speed = 3.0 + (double_t) score / 300.0;
+    double_t speed = 3.0 + (double_t) score / 600.0;
     if (speed > 7) speed = 7;
 
     if (game.state == state_start) speed = 3;
@@ -201,20 +202,26 @@ void player_movement() {
     }
 
     // Jump Calculations
-    if (game.stamp != 0) {
-        double_t dt = (double_t) (score - game.stamp) / 2.0;
+    if (game.jump_stamp != 0) {
+        double_t dt = (double_t) (score - game.jump_stamp) / 2.0;
         dt = (-dt + 8) * dt;
         game.y = dt > 0 ? dt : 0;
-        if (game.crouch) game.stamp -= 2;
+        if (game.crouch) game.jump_stamp -= 2;
     }
-    if (game.y == 0) game.stamp = game.space ? score - 2 : 0;
+
+    // Crouch Calculations
+    if (get_time() - game.crouch_stamp <= CROUCH_TIME) game.crouch = 1;
+    else if (game.crouch_stamp == 0 && game.crouch) game.crouch_stamp = get_time();
+    else game.crouch_stamp = 0;
+
+    if (game.y == 0) game.jump_stamp = game.space ? score - 2 : 0;
     game.score = score;
     game.speed = speed;
 }
 
 void drawing_back(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t *background) {
     if (x >= game.weight || y >= game.height) return;
-    // if (x + w < 0 || y + h < 0) return;
+    if (w * 4 + x < 0 || h * 4 + y < 0) return;
     int p_x = 0;
     if (x < 0) {
         p_x = -x;
@@ -339,7 +346,7 @@ void draw_enemy() {
     for (int e = 0; e < ENEMY_COUNT; ++e) {
         struct enemy_st *enemy = &game.enemies[e];
         if (enemy->e_type == 0) {
-            const int32_t min_distance = game.speed * (ENEMY_MIN_DISTANCE + rand() % 10); // NOLINT(*-narrowing-conversions, *-msc50-cpp)
+            const int32_t min_distance = (game.speed) * (ENEMY_MIN_DISTANCE + rand() % 25); // NOLINT(*-narrowing-conversions, *-msc50-cpp)
             enemy->e_type = rand() % ENEMY_TYPES + 1;  // NOLINT(*-msc50-cpp)
             enemy->e_x = game.weight;
             if (enemy->e_x < min_distance + mx) enemy->e_x = min_distance + mx;

@@ -18,12 +18,13 @@
 #define PHASE_W 2            // Width of phase indicator sprites
 
 // Game constants
-#define ENEMY_COUNT 2        // Maximum number of enemies
-#define ENEMY_TYPES 5        // Number of different enemy types
-#define ENEMY_MIN_DISTANCE 8 // Minimum distance between enemies
-#define CLOUD_COUNT 5        // Number of clouds in the game
-#define CLOUD_MIN_DISTANCE 5 // Minimum distance between clouds
-#define DAY_LIGHT_TIME 10000 // Duration of daylight in milliseconds
+#define ENEMY_COUNT 2         // Maximum number of enemies
+#define ENEMY_TYPES 5         // Number of different enemy types
+#define ENEMY_MIN_DISTANCE 10 // Minimum distance between enemies
+#define CLOUD_COUNT 5         // Number of clouds in the game
+#define CLOUD_MIN_DISTANCE 5  // Minimum distance between clouds
+#define DAY_LIGHT_TIME 10000  // Duration of daylight in milliseconds
+#define CROUCH_TIME 275       // Duration of daylight in milliseconds
 
 // Dinosaur sprites in different states represented as bitmaps
 uint32_t idle_1[DINO_H * DINO_W] = {
