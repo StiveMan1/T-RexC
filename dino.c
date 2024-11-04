@@ -42,7 +42,7 @@
 #include <sys/time.h>
 #include "game_objects.h"
 #include <math.h>
-
+#include <signal.h>
 
 // Global variables for game control and shared key handling
 volatile uint8_t running = 1;       // Controls the main game loop
@@ -555,9 +555,19 @@ void drawing_thread() {
     }
 }
 
+// Show cursor when program is closed
+void show_cursor(int signal) {
+    wprintf(L"\e[?25h");
+    running = 0;
+}
+
 // Main game loop and initialization
 int main() {
     setlocale(LC_CTYPE, "");                    // Enable Unicode for the console
+    
+    signal(SIGINT, show_cursor);
+    signal(SIGTERM, show_cursor);
+    
     wprintf(L"\e[?25l");                        // Hide cursor in the terminal
     pthread_t input_tid;
     pthread_mutex_init(&key_mutex, NULL);
