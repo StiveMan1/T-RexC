@@ -1,0 +1,27 @@
+name: trex-c
+version: '1.0'
+summary: A console game based on the Google T-Rex game
+description: |
+  This is a console game inspired by the Google T-Rex game, where players can enjoy an adventure in a command-line interface.
+
+grade: stable
+confinement: strict
+
+parts:
+  trex-c:
+    source: .
+    plugin: autotools
+    build-packages:
+      - gcc
+      - libc6-dev
+      - libpthread-stubs0-dev
+      - libm-dev
+    stage-packages:
+      - glibc
+
+apps:
+  trex-c:
+    command: trex-c
+    plugs:
+      - core
+

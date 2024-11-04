@@ -44,12 +44,12 @@ Make sure you have a C compiler installed, like `gcc` or `clang`.
 
 2. Compile the game:
     ```bash
-    gcc dino.c -O3 -lm -o dino
+    gcc trex-c.c -O3 -lm -o trex-c
     ```
 
 3. Run the game:
     ```bash
-    ./dino
+    ./trex-c
     ```
 
 ## Usage
@@ -90,6 +90,5 @@ Some gameplay and display elements can be configured:
 
 All contributions are welcome! Please follow the coding style found in the existing code and add comments where necessary.
 
-<!-- ## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. -->
+## License
+This project is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.
