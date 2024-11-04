@@ -37,7 +37,7 @@ Make sure you have a C compiler installed, like `gcc` or `clang`.
 ## Installation
 ### Arch Linux AUR Pakage installation :
 ```bash
-sudo pacman -S trex-c
+yay -S trex-c
 ```
 
 ### Installation from source files
