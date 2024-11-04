@@ -35,7 +35,12 @@ This is a console-based game inspired by the Google Chrome T-Rex dinosaur game, 
 Make sure you have a C compiler installed, like `gcc` or `clang`.
 
 ## Installation
+### Arch Linux AUR Pakage installation :
+```bash
+sudo pacman -S trex-c
+```
 
+### Installation from source files
 1. Clone the repository:
     ```bash
     git clone https://github.com/StiveMan1/T-RexC.git
