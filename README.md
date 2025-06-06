@@ -1,99 +1,67 @@
-# Console T-Rex Game
-
+# 🦖 T-Rex-C: Your Dino Run, But in the Terminal! 🏃‍♂️
 ![Dino](media/dino.jpg)
 
-This is a console-based game inspired by the Google Chrome T-Rex dinosaur game, developed in C. The game provides a minimalistic experience with keyboard controls and a dynamic console interface.
-
-## Table of Contents
-
-- [Features](#features)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Gameplay](#gameplay)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
+Ever been stuck without internet and played that awesome T-Rex game in Chrome? Well, guess what? Now you can relive that glory right in your terminal, thanks to this cool project written in C! It's super simple, super retro, and totally addictive.
 
 ---
 
-## Features
+## 🌟 What's Inside?
 
-- **Console-based** gameplay with simple ASCII graphics.
-- **Dynamic terminal resizing** support.
-- **Player movement and obstacles**, including an enemy and clouds.
-- **Score tracking**.
-- **Day/Night cycle** with sun, moon, and clouds.
+* **Old-school Terminal Fun**: Get ready for some sweet ASCII-ish graphics.
+* **Resizes with Your Terminal**: No weird stretching! It just adapts.
+* **Dino Jumps, Obstacles Appear**: Your trusty dino, pesky enemies, and even some fluffy clouds.
+* **High Score Chasing**: See how long you can survive!
+* **Day & Night Cycle**: Watch the sun and moon do their thing while you play.
 
-## Requirements
+## 🛠️ What You Need to Play
+* **Operating System**: If you're on Linux or macOS (basically, anything Unix-y), you're golden.
+* **Stuff Under the Hood**: It uses standard C libraries and some terminal magic (`ioctl`, `unistd.h`).
+* **Compiler**: Make sure you have `gcc` or `clang` installed.
 
-- **Operating System**: Unix-based systems (Linux, macOS).
-- **Dependencies**: 
-  - Standard C libraries (`stdlib.h`, `stdio.h`, etc.).
-  - Terminal control libraries (`ioctl`, `unistd.h`).
-
-Make sure you have a C compiler installed, like `gcc` or `clang`.
-
-## Installation
-### Arch Linux AUR Pakage installation :
+## 🚀 Get Started!
+### For Arch Linux folks (the easy way!):
 ```bash
 yay -S trex-c
 ```
 
-### Installation from source files
-1. Clone the repository:
+### Or, if you're feeling hands-on (from the source!):
+1. Grab the code:
     ```bash
     git clone https://github.com/StiveMan1/T-RexC.git
     cd T-RexC
     ```
 
-2. Compile the game:
+2. Compile it up:
     ```bash
     gcc trex-c.c -O3 -lm -o trex-c
     ```
 
-3. Run the game:
+3. Run the show!
     ```bash
     ./trex-c
     ```
 
-## Usage
+## 🎮 How to Play
 
-The game runs directly in the terminal. Use the following keys to control your character:
+It's super straightforward. Just open your terminal, run the game, and use these keys:
 
-- **Space bar**: Jump and Start game
+- **Space bar / Up Arrow**: Jump! Also, kicks off the game.
 - **Arrow Up**: Jump and Start game
-- **Arrow Down**: Crouch and Start game
-- **R**: Restart in Spectator Mod
+- **R**: Game over? Hit 'R' to restart in spectator mode and watch the world go by.
 
-## Gameplay
+## 🕹️ Gameplay Lowdown
 
-Avoid obstacles (represented by enemies on the screen) to keep your character alive. The score increases as you survive longer, with a higher score indicating better performance. Watch out for the changing day and night cycle, and use the jump function to avoid enemies and ground obstacles.
+Your mission: **Dodge stuff!** Seriously, just jump over those obstacles and keep your dino alive. Your score goes up the longer you last, so aim for that high score! Keep an eye on the changing day and night – it adds a nice touch to your endless run.
 
-## Configuration
+## ⚙️ Tweak It (Kind of!)
 
-Some gameplay and display elements can be configured:
+While it's a simple game, a few things adjust automatically:
 
-- **Game height and width**: Automatically adapts to the console window size.
-- **Score**: Displays in the top corner.
-- **Environment**: Dynamic day/night cycle, clouds, sun, and moon.
-
-## Code Structure
-
-- **`dino.c`**: Contains the `main` function and game loop.
-- **`update_console_events()`**: Manages all screen updates, from player movement to obstacle generation and score display.
-- **`keyboard_handler()`**: Handles player inputs.
-- **`draw_*()` functions**: Render various elements like the player, obstacles, ground, and sky.
-
-## Contributing
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Commit your changes (`git commit -m 'Add new feature'`).
-4. Push to the branch (`git push origin feature-branch`).
-5. Open a Pull Request.
+- **Screen Size**: It'll fit your terminal window like a glove.
+- **Score**: Always chilling in the top corner.
+- **World**: Dynamic day/night, clouds, sun, moon – the whole shebang!
 
 All contributions are welcome! Please follow the coding style found in the existing code and add comments where necessary.
 
-## License
-This project is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.
+## 📝 License
+This project is open source and licensed under the [GNU License](LICENSE). Check out the LICENSE file for all the nitty-gritty details.
